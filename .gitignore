@@ -1,0 +1,36 @@
+# ── Sensitive / secret files ─────────────────────────────────────────────────
+.vault.key
+passwords.json
+
+# ── User data files (personal, machine-specific) ──────────────────────────────
+history.json
+bookmarks.json
+notes.json
+downloads.json
+settings.json
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+.env/
+
+# ── System-generated desktop file (produced by install.sh) ───────────────────
+# The template is tracked; the generated file is not.
+infinity-browser.desktop
+
+# ── OS / editor noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

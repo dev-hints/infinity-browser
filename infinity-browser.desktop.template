@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Infinity Browser
+GenericName=Web Browser
+Comment=A fast, feature-rich web browser built with PyQt6
+Exec=python3 __INSTALL_DIR__/main.py %u
+Icon=infinity-browser
+Terminal=false
+StartupNotify=true
+StartupWMClass=infinity
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;x-scheme-handler/http;x-scheme-handler/https;
+Keywords=browser;web;internet;infinity;
