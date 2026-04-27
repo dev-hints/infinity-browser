@@ -1,7 +1,7 @@
 # ── Sensitive / secret files ─────────────────────────────────────────────────
 .vault.key
 passwords.json
-
+python
 # ── User data files (personal, machine-specific) ──────────────────────────────
 history.json
 bookmarks.json

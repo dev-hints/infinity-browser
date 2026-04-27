@@ -3,6 +3,8 @@ import os
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from scheme_handler import register_infinity_scheme
+from settings_manager import SettingsManager
+from theme_manager import apply_theme
 
 # MUST be called before QApplication is created
 register_infinity_scheme()
@@ -24,11 +26,9 @@ def main():
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
 
-    # Load stylesheet
-    style_path = os.path.join(os.path.dirname(__file__), 'styles.qss')
-    if os.path.exists(style_path):
-        with open(style_path, 'r') as f:
-            app.setStyleSheet(f.read())
+    # Use fixed app themes only (dark default, light optional), independent of OS theme.
+    settings = SettingsManager()
+    apply_theme(app, settings.get("ui_theme", "dark"))
 
     window = BrowserWindow()
     window.show()

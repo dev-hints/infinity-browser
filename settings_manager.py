@@ -20,6 +20,7 @@ class SettingsManager:
             "restore_tabs":  False,
 
             # Appearance
+            "ui_theme":      "dark",    # fixed app chrome theme: dark/light
             "font_size":     16,       # px, applied via WebEngine settings
             "default_zoom":  100,      # percent
 

@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QFrame, QLineEdit
 )
 from PyQt6.QtCore import Qt, QUrl
-from PyQt6.QtGui import QFont
+from theme_manager import render_template, theme_from_widget
 
 BOOKMARKS_FILE = os.path.join(os.path.dirname(__file__), 'bookmarks.json')
 
@@ -49,30 +49,30 @@ class BookmarkDialog(QDialog):
         self.manager = manager
         self.tab_manager = tab_manager
 
-        self.setStyleSheet("""
+        self.setStyleSheet(render_template("""
             QDialog {
-                background-color: #1a1b26;
-                color: #a9b1d6;
+                background-color: {{surface}};
+                color: {{text_soft}};
             }
             QLabel#Title {
                 font-size: 18px;
                 font-weight: bold;
-                color: #c0caf5;
+                color: {{text}};
                 padding: 4px 0;
             }
             QLineEdit {
-                background-color: #24283b;
-                color: #c0caf5;
-                border: 1px solid #414868;
+                background-color: {{surface_alt}};
+                color: {{text}};
+                border: 1px solid {{border}};
                 border-radius: 6px;
                 padding: 6px 10px;
                 font-size: 13px;
             }
-            QLineEdit:focus { border-color: #7aa2f7; }
+            QLineEdit:focus { border-color: {{accent}}; }
             QListWidget {
-                background-color: #24283b;
-                color: #c0caf5;
-                border: 1px solid #414868;
+                background-color: {{surface_alt}};
+                color: {{text}};
+                border: 1px solid {{border}};
                 border-radius: 8px;
                 padding: 4px;
                 font-size: 13px;
@@ -83,29 +83,29 @@ class BookmarkDialog(QDialog):
                 border-radius: 6px;
             }
             QListWidget::item:selected {
-                background-color: #3d59a1;
+                background-color: {{selection}};
                 color: #ffffff;
             }
             QListWidget::item:hover:!selected {
-                background-color: #2f334d;
+                background-color: {{border_soft}};
             }
-            QFrame#Separator { background-color: #2f334d; }
+            QFrame#Separator { background-color: {{border_soft}}; }
             QPushButton {
-                background-color: #2f334d;
-                color: #c0caf5;
+                background-color: {{border_soft}};
+                color: {{text}};
                 border: none;
                 padding: 7px 18px;
                 border-radius: 6px;
                 font-size: 13px;
                 font-weight: bold;
             }
-            QPushButton:hover { background-color: #414868; }
+            QPushButton:hover { background-color: {{border}}; }
             QPushButton#DeleteBtn {
-                background-color: #3b1219;
-                color: #f7768e;
+                background-color: {{danger_soft}};
+                color: {{danger}};
             }
-            QPushButton#DeleteBtn:hover { background-color: #f7768e; color: #1a1b26; }
-        """)
+            QPushButton#DeleteBtn:hover { background-color: {{danger}}; color: {{surface}}; }
+        """, theme_from_widget(self)))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
