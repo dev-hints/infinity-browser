@@ -139,6 +139,19 @@ class TabManager(QTabWidget):
         ws.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, not popup_on)
         ws.setFontSize(QWebEngineSettings.FontSize.DefaultFontSize, font_size)
 
+    def _get_home_url(self):
+        """Return the configured home page as a QUrl."""
+        homepage = "new_tab.html"
+        if self.parent_window and hasattr(self.parent_window, 'settings_manager'):
+            homepage = self.parent_window.settings_manager.get("homepage_url")
+
+        if homepage == "new_tab.html" or not homepage:
+            return QUrl("infinity://newtab")
+
+        if not homepage.startswith("http"):
+            homepage = "https://" + homepage
+        return QUrl(homepage)
+
 
     def create_web_view(self):
         tab = BrowserTab(self)
@@ -161,16 +174,7 @@ class TabManager(QTabWidget):
     def add_new_tab(self, url=None):
         # PyQt6 clicked signal passes a boolean (False), which overrides the None default
         if not url or isinstance(url, bool):
-            homepage = "new_tab.html"
-            if self.parent_window and hasattr(self.parent_window, 'settings_manager'):
-                homepage = self.parent_window.settings_manager.get("homepage_url")
-            
-            if homepage == "new_tab.html" or not homepage:
-                url = QUrl("infinity://newtab")
-            else:
-                if not homepage.startswith("http"):
-                    homepage = "https://" + homepage
-                url = QUrl(homepage)
+            url = self._get_home_url()
         
         tab = self.add_empty_tab()
         tab.load(url)
@@ -239,4 +243,4 @@ class TabManager(QTabWidget):
             current_view.reload()
 
     def navigate_home(self):
-        self.load_url(self.new_tab_url)
+        self.load_url(self._get_home_url())
