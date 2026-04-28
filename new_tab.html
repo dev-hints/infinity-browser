@@ -6,12 +6,17 @@
     <title>Infinity New Tab</title>
     <style>
         :root {
-            --bg-color: #0f1015;
-            --glass-bg: rgba(26, 27, 38, 0.6);
-            --glass-border: rgba(65, 72, 104, 0.3);
-            --text-main: #c0caf5;
-            --text-accent: #7aa2f7;
-            --hover-color: #2f334d;
+            --bg-color: {{window_bg}};
+            --card-bg: {{surface}};
+            --card-bg-alt: {{surface_alt}};
+            --glass-border: {{border}};
+            --text-main: {{text}};
+            --text-soft: {{text_soft}};
+            --text-muted: {{text_muted}};
+            --text-accent: {{accent}};
+            --text-link: {{link}};
+            --hover-color: {{border_soft}};
+            --font-ui: '{{font_ui}}', 'Segoe UI', sans-serif;
         }
 
         body {
@@ -22,8 +27,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: radial-gradient(circle at center, #1a1b26 0%, #0f1015 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at center, var(--card-bg) 0%, var(--bg-color) 100%);
+            font-family: var(--font-ui);
             color: var(--text-main);
             overflow: hidden;
         }
@@ -37,12 +42,12 @@
             height: 100%;
             pointer-events: none;
             background-image: 
-                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 160px 120px, #ddd, rgba(0,0,0,0));
+                radial-gradient(2px 2px at 20px 30px, var(--text-soft), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, var(--text-main), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, var(--text-soft), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, var(--text-main), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, var(--text-main), rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 160px 120px, var(--text-soft), rgba(0,0,0,0));
             background-repeat: repeat;
             background-size: 200px 200px;
             animation: moveStars 100s linear infinite;
@@ -65,7 +70,7 @@
 
         .logo {
             font-size: 7rem;
-            color: #7aa2f7;
+            color: var(--text-accent);
             text-shadow: 0 0 30px rgba(122, 162, 247, 0.4);
             margin-bottom: -15px;
         }
@@ -75,14 +80,14 @@
             font-weight: 300;
             letter-spacing: 5px;
             margin-bottom: 40px;
-            background: linear-gradient(90deg, #7aa2f7, #bb9af7);
+            background: linear-gradient(90deg, var(--text-accent), var(--text-link));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 0 20px rgba(122, 162, 247, 0.2);
         }
 
         .search-box {
-            background: var(--glass-bg);
+            background: color-mix(in srgb, var(--card-bg) 70%, transparent);
             backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
             border-radius: 30px;
@@ -109,11 +114,11 @@
         }
 
         .search-input::placeholder {
-            color: #565f89;
+            color: var(--text-muted);
         }
 
         .search-icon {
-            color: #565f89;
+            color: var(--text-muted);
             font-size: 1.2rem;
         }
 
@@ -125,7 +130,7 @@
         }
 
         .link-item {
-            background: var(--glass-bg);
+            background: color-mix(in srgb, var(--card-bg-alt) 70%, transparent);
             backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
             border-radius: 15px;
@@ -149,7 +154,7 @@
 
         .link-icon {
             margin-bottom: 5px;
-            color: #c0caf5;
+            color: var(--text-main);
         }
         
         .link-item:hover .link-icon {
@@ -166,18 +171,18 @@
             width: 100%;
             text-align: center;
             font-size: 0.85rem;
-            color: #565f89;
+            color: var(--text-muted);
             letter-spacing: 1px;
             z-index: 10;
         }
 
         .footer .brand {
-            color: #7aa2f7;
+            color: var(--text-accent);
             font-weight: bold;
         }
 
         .footer .dev {
-            color: #c0caf5;
+            color: var(--text-main);
         }
     </style>
 </head>

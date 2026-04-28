@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                               QListWidgetItem, QApplication, QWidget,
                               QFormLayout, QFrame, QScrollArea)
 from PyQt6.QtCore import Qt
+from theme_manager import render_template, theme_from_widget
 
 PASSWORDS_FILE = os.path.join(os.path.dirname(__file__), 'passwords.json')
 KEY_FILE       = os.path.join(os.path.dirname(__file__), '.vault.key')
@@ -130,37 +131,38 @@ class PasswordManagerDialog(QDialog):
         self.setWindowTitle("🔐  Password Vault")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(560, 500)
-        self.setStyleSheet("""
-            QDialog { background-color: #1a1b26; color: #c0caf5; }
-            QLabel  { color: #a9b1d6; font-size: 13px; }
-            QLabel#Title { font-size: 18px; font-weight: bold; color: #c0caf5; }
-            QLabel#Sub   { font-size: 11px; color: #565f89; }
+        theme = theme_from_widget(self)
+        self.setStyleSheet(render_template("""
+            QDialog { background-color: {{surface}}; color: {{text}}; }
+            QLabel  { color: {{text_soft}}; font-size: 13px; }
+            QLabel#Title { font-size: 18px; font-weight: bold; color: {{text}}; }
+            QLabel#Sub   { font-size: 11px; color: {{text_muted}}; }
             QLineEdit {
-                background-color: #24283b; color: #c0caf5;
-                border: 1px solid #414868; padding: 7px 10px;
+                background-color: {{surface_alt}}; color: {{text}};
+                border: 1px solid {{border}}; padding: 7px 10px;
                 border-radius: 6px; font-size: 13px;
             }
-            QLineEdit:focus { border-color: #7aa2f7; }
+            QLineEdit:focus { border-color: {{accent}}; }
             QListWidget {
-                background-color: #24283b; color: #c0caf5;
-                border: 1px solid #414868; border-radius: 8px;
+                background-color: {{surface_alt}}; color: {{text}};
+                border: 1px solid {{border}}; border-radius: 8px;
                 padding: 4px; font-size: 13px; outline: none;
             }
             QListWidget::item { padding: 8px 10px; border-radius: 6px; }
-            QListWidget::item:selected { background-color: #3d59a1; color: #fff; }
-            QListWidget::item:hover:!selected { background-color: #2f334d; }
-            QFrame#Sep { background-color: #2f334d; max-height: 1px; }
+            QListWidget::item:selected { background-color: {{selection}}; color: #fff; }
+            QListWidget::item:hover:!selected { background-color: {{border_soft}}; }
+            QFrame#Sep { background-color: {{border_soft}}; max-height: 1px; }
             QPushButton {
-                background-color: #2f334d; color: #c0caf5;
+                background-color: {{border_soft}}; color: {{text}};
                 border: none; padding: 7px 16px;
                 border-radius: 6px; font-weight: bold; font-size: 12px;
             }
-            QPushButton:hover { background-color: #414868; }
-            QPushButton#AddBtn  { background-color: #7aa2f7; color: #1a1b26; }
-            QPushButton#AddBtn:hover { background-color: #89b4fa; }
-            QPushButton#DelBtn  { background-color: #3b1219; color: #f7768e; }
-            QPushButton#DelBtn:hover { background-color: #f7768e; color: #1a1b26; }
-        """)
+            QPushButton:hover { background-color: {{border}}; }
+            QPushButton#AddBtn  { background-color: {{accent}}; color: {{surface}}; }
+            QPushButton#AddBtn:hover { background-color: {{accent_alt}}; }
+            QPushButton#DelBtn  { background-color: {{danger_soft}}; color: {{danger}}; }
+            QPushButton#DelBtn:hover { background-color: {{danger}}; color: {{surface}}; }
+        """, theme))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(20, 20, 20, 16)
@@ -204,7 +206,7 @@ class PasswordManagerDialog(QDialog):
 
         # Saved list
         saved_label = QLabel("Saved Credentials")
-        saved_label.setStyleSheet("font-weight: bold; color: #7aa2f7; font-size: 12px;")
+        saved_label.setStyleSheet(render_template("font-weight: bold; color: {{accent}}; font-size: 12px;", theme))
         root.addWidget(saved_label)
 
         self.list_widget = QListWidget()

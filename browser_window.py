@@ -16,18 +16,19 @@ from bookmark_manager import BookmarkManager, BookmarkDialog
 from download_manager import DownloadManager
 from ad_blocker import AdBlocker
 from notes_manager import NotesManager, NotesDialog
+from theme_manager import render_template, theme_from_widget
 
 ABOUT_STYLE = """
-QDialog { background-color: #1a1b26; color: #c0caf5; }
+QDialog { background-color: {{surface}}; color: {{text}}; }
 QTabWidget::pane {
-    border: 1px solid #2f334d;
+    border: 1px solid {{border_soft}};
     border-radius: 0 8px 8px 8px;
-    background-color: #1a1b26;
+    background-color: {{surface}};
     top: -1px;
 }
 QTabBar::tab {
-    background-color: #24283b;
-    color: #565f89;
+    background-color: {{surface_alt}};
+    color: {{text_muted}};
     border: none;
     padding: 8px 20px;
     margin-right: 2px;
@@ -35,22 +36,22 @@ QTabBar::tab {
     font-weight: bold;
     font-size: 12px;
 }
-QTabBar::tab:selected { background-color: #7aa2f7; color: #1a1b26; }
-QTabBar::tab:hover:!selected { background-color: #2f334d; color: #c0caf5; }
-QLabel { color: #a9b1d6; }
-QFrame#HSep { background-color: #2f334d; max-height: 1px; }
+QTabBar::tab:selected { background-color: {{accent}}; color: {{surface}}; }
+QTabBar::tab:hover:!selected { background-color: {{border_soft}}; color: {{text}}; }
+QLabel { color: {{text_soft}}; }
+QFrame#HSep { background-color: {{border_soft}}; max-height: 1px; }
 QPushButton {
-    background-color: #2f334d; color: #c0caf5;
+    background-color: {{border_soft}}; color: {{text}};
     border: none; padding: 7px 20px;
     border-radius: 6px; font-weight: bold;
 }
-QPushButton:hover { background-color: #414868; }
+QPushButton:hover { background-color: {{border}}; }
 QScrollArea { border: none; background: transparent; }
 QScrollBar:vertical {
-    background: #1a1b26; width: 6px; border-radius: 3px;
+    background: {{surface}}; width: 6px; border-radius: 3px;
 }
 QScrollBar::handle:vertical {
-    background: #414868; border-radius: 3px; min-height: 20px;
+    background: {{border}}; border-radius: 3px; min-height: 20px;
 }
 """
 
@@ -60,7 +61,8 @@ class AboutDialog(QDialog):
         self.setWindowTitle("About Infinity Browser")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(580, 520)
-        self.setStyleSheet(ABOUT_STYLE)
+        self.theme = theme_from_widget(self)
+        self.setStyleSheet(render_template(ABOUT_STYLE, self.theme))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -68,34 +70,29 @@ class AboutDialog(QDialog):
 
         # ── Hero banner ──────────────────────────────────────────────────────
         banner = QWidget()
-        banner.setStyleSheet(
+        banner.setStyleSheet(render_template(
             "background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-            "stop:0 #1a1b26, stop:0.5 #24283b, stop:1 #1a1b26);"
-            "border-bottom: 1px solid #2f334d;"
-        )
+            "stop:0 {{surface}}, stop:0.5 {{surface_alt}}, stop:1 {{surface}});"
+            "border-bottom: 1px solid {{border_soft}};",
+            self.theme,
+        ))
         banner_lay = QHBoxLayout(banner)
         banner_lay.setContentsMargins(28, 22, 28, 22)
         banner_lay.setSpacing(20)
 
         logo = QLabel("∞")
-        logo.setStyleSheet(
-            "font-size: 72px; color: #7aa2f7;"
-        )
+        logo.setStyleSheet(render_template("font-size: 72px; color: {{accent}};", self.theme))
         logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         banner_lay.addWidget(logo)
 
         txt_col = QVBoxLayout()
         txt_col.setSpacing(4)
         name = QLabel("Infinity Browser")
-        name.setStyleSheet(
-            "font-size: 26px; font-weight: bold; color: #c0caf5; letter-spacing: 1px;"
-        )
+        name.setStyleSheet(render_template("font-size: 26px; font-weight: bold; color: {{text}}; letter-spacing: 1px;", self.theme))
         ver = QLabel("Version 1.0.0  ·  Official Release  ·  64-bit")
-        ver.setStyleSheet("font-size: 12px; color: #565f89; letter-spacing: 0.5px;")
+        ver.setStyleSheet(render_template("font-size: 12px; color: {{text_muted}}; letter-spacing: 0.5px;", self.theme))
         tagline = QLabel("Fast. Private. Yours.")
-        tagline.setStyleSheet(
-            "font-size: 13px; color: #7aa2f7; font-style: italic; margin-top: 2px;"
-        )
+        tagline.setStyleSheet(render_template("font-size: 13px; color: {{accent}}; font-style: italic; margin-top: 2px;", self.theme))
         txt_col.addWidget(name)
         txt_col.addWidget(ver)
         txt_col.addWidget(tagline)
@@ -113,11 +110,11 @@ class AboutDialog(QDialog):
 
         # ── Footer ───────────────────────────────────────────────────────────
         footer = QWidget()
-        footer.setStyleSheet("border-top: 1px solid #2f334d; background-color: #1a1b26;")
+        footer.setStyleSheet(render_template("border-top: 1px solid {{border_soft}}; background-color: {{surface}};", self.theme))
         foot_lay = QHBoxLayout(footer)
         foot_lay.setContentsMargins(20, 12, 20, 12)
         copy = QLabel("© 2026 Infinity Browser Project. All rights reserved.")
-        copy.setStyleSheet("font-size: 11px; color: #414868;")
+        copy.setStyleSheet(render_template("font-size: 11px; color: {{border}};", self.theme))
         foot_lay.addWidget(copy)
         foot_lay.addStretch()
         close_btn = QPushButton("Close")
@@ -138,18 +135,20 @@ class AboutDialog(QDialog):
             vl.setSpacing(6)
             vl.setContentsMargins(0, 0, 0, 0)
             t = QLabel(title)
-            t.setStyleSheet(
-                "font-size: 11px; font-weight: bold; color: #7aa2f7;"
-                "text-transform: uppercase; letter-spacing: 1px;"
-            )
+            t.setStyleSheet(render_template(
+                "font-size: 11px; font-weight: bold; color: {{accent}};"
+                "text-transform: uppercase; letter-spacing: 1px;",
+                self.theme,
+            ))
             vl.addWidget(t)
             b = QLabel(body)
-            b.setStyleSheet("font-size: 13px; color: #a9b1d6; line-height: 1.6;")
+            b.setStyleSheet(render_template("font-size: 13px; color: {{text_soft}}; line-height: 1.6;", self.theme))
             b.setWordWrap(True)
             b.setTextFormat(Qt.TextFormat.RichText)
             vl.addWidget(b)
             if link:
-                lbl = QLabel(f'<a href="{link}" style="color:#bb9af7;text-decoration:none;">'
+                link_style = render_template("color:{{link}};text-decoration:none;", self.theme)
+                lbl = QLabel(f'<a href="{link}" style="{link_style}">'
                              f'{link_label or link}</a>')
                 lbl.setOpenExternalLinks(True)
                 lbl.setStyleSheet("font-size: 12px;")
@@ -203,13 +202,14 @@ class AboutDialog(QDialog):
             vl = QVBoxLayout(box)
             vl.setSpacing(6)
             vl.setContentsMargins(0, 0, 0, 0)
-            hdr = QLabel(f"{version}  <span style='color:#414868;font-size:11px;'>— {date}</span>")
-            hdr.setStyleSheet("font-size: 14px; font-weight: bold; color: #7aa2f7;")
+            hdr_meta_color = render_template("{{border}}", self.theme)
+            hdr = QLabel(f"{version}  <span style='color:{hdr_meta_color};font-size:11px;'>— {date}</span>")
+            hdr.setStyleSheet(render_template("font-size: 14px; font-weight: bold; color: {{accent}};", self.theme))
             hdr.setTextFormat(Qt.TextFormat.RichText)
             vl.addWidget(hdr)
             for item in items:
                 bullet = QLabel(f"  • {item}")
-                bullet.setStyleSheet("font-size: 13px; color: #a9b1d6;")
+                bullet.setStyleSheet(render_template("font-size: 13px; color: {{text_soft}};", self.theme))
                 bullet.setWordWrap(True)
                 vl.addWidget(bullet)
             return box
@@ -246,12 +246,13 @@ class AboutDialog(QDialog):
             vl.setSpacing(5)
             vl.setContentsMargins(0, 0, 0, 0)
             t = QLabel(title)
-            t.setStyleSheet(
-                "font-size: 12px; font-weight: bold; color: #7aa2f7;"
-                "letter-spacing: 0.5px;"
-            )
+            t.setStyleSheet(render_template(
+                "font-size: 12px; font-weight: bold; color: {{accent}};"
+                "letter-spacing: 0.5px;",
+                self.theme,
+            ))
             b = QLabel(body)
-            b.setStyleSheet("font-size: 13px; color: #a9b1d6; line-height: 1.6;")
+            b.setStyleSheet(render_template("font-size: 13px; color: {{text_soft}}; line-height: 1.6;", self.theme))
             b.setWordWrap(True)
             b.setTextFormat(Qt.TextFormat.RichText)
             vl.addWidget(t)
@@ -259,7 +260,7 @@ class AboutDialog(QDialog):
             return box
 
         eff_label = QLabel("Effective Date: April 2026  ·  Version 1.0")
-        eff_label.setStyleSheet("font-size: 11px; color: #565f89; margin-bottom: 4px;")
+        eff_label.setStyleSheet(render_template("font-size: 11px; color: {{text_muted}}; margin-bottom: 4px;", self.theme))
         lay.addWidget(eff_label)
         lay.addWidget(self._hsep())
 
@@ -362,7 +363,6 @@ class TitleBar(QWidget):
         self.close_btn = QPushButton("✕")
         self.close_btn.setObjectName("TitleButton")
         self.close_btn.setProperty("class", "CloseButton")
-        self.close_btn.setStyleSheet("QPushButton:hover { background-color: #f7768e; color: white; }")
         self.close_btn.clicked.connect(self.parent.close)
         self.layout.addWidget(self.close_btn)
         
@@ -397,13 +397,6 @@ class BrowserWindow(QMainWindow):
         # Main central widget with rounded corners background
         self.central_widget = QWidget()
         self.central_widget.setObjectName("CentralWidget")
-        self.central_widget.setStyleSheet("""
-            QWidget#CentralWidget {
-                background-color: #1a1b26;
-                border-radius: 8px;
-                border: 1px solid #414868;
-            }
-        """)
         self.setCentralWidget(self.central_widget)
         
         # Initialize Managers

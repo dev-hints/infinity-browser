@@ -9,8 +9,13 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QProgressBar, QWidget, QFileDialog, QScrollArea, QMessageBox)
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest
+from theme_manager import render_template, theme_from_widget
 
 DOWNLOADS_FILE = os.path.join(os.path.dirname(__file__), 'downloads.json')
+
+
+def _t(widget, style: str) -> str:
+    return render_template(style, theme_from_widget(widget))
 
 class DownloadHistoryWidget(QWidget):
     def __init__(self, data, manager, parent=None):
@@ -23,9 +28,9 @@ class DownloadHistoryWidget(QWidget):
         
         info_layout = QHBoxLayout()
         self.name_label = QLabel(data.get("filename", "Unknown"))
-        self.name_label.setStyleSheet("font-weight: bold; color: #c0caf5;")
+        self.name_label.setStyleSheet(_t(self, "font-weight: bold; color: {{text}};"))
         self.status_label = QLabel(f"{data.get('size_str', '')} • {data.get('date', '')}")
-        self.status_label.setStyleSheet("color: #a9b1d6; font-size: 12px;")
+        self.status_label.setStyleSheet(_t(self, "color: {{text_soft}}; font-size: 12px;"))
         
         info_layout.addWidget(self.name_label)
         info_layout.addStretch()
@@ -53,18 +58,18 @@ class DownloadHistoryWidget(QWidget):
         self.delete_btn.clicked.connect(self.delete_history)
         self.redownload_btn.clicked.connect(self.redownload)
         
-        self.setStyleSheet("""
-            QWidget { background-color: #24283b; border-radius: 6px; }
-            QPushButton { background-color: #414868; color: #c0caf5; border: none; padding: 4px 10px; border-radius: 3px; }
-            QPushButton:hover { background-color: #7aa2f7; color: #1a1b26; }
-        """)
+        self.setStyleSheet(_t(self, """
+            QWidget { background-color: {{surface_alt}}; border-radius: 6px; }
+            QPushButton { background-color: {{border}}; color: {{text}}; border: none; padding: 4px 10px; border-radius: 3px; }
+            QPushButton:hover { background-color: {{accent}}; color: {{surface}}; }
+        """))
 
         # Disable open buttons if file doesn't exist
         if not os.path.exists(data.get("save_path", "")):
             self.open_btn.setDisabled(True)
             self.folder_btn.setDisabled(True)
             self.status_label.setText("File Deleted • " + data.get('date', ''))
-            self.status_label.setStyleSheet("color: #f7768e; font-size: 12px;")
+            self.status_label.setStyleSheet(_t(self, "color: {{danger}}; font-size: 12px;"))
 
     def open_file(self, filepath):
         if not filepath or not os.path.exists(filepath): return
@@ -110,9 +115,9 @@ class DownloadTaskWidget(QWidget):
         
         info_layout = QHBoxLayout()
         self.name_label = QLabel(self.filename)
-        self.name_label.setStyleSheet("font-weight: bold; color: #c0caf5;")
+        self.name_label.setStyleSheet(_t(self, "font-weight: bold; color: {{text}};"))
         self.status_label = QLabel("Starting...")
-        self.status_label.setStyleSheet("color: #a9b1d6; font-size: 12px;")
+        self.status_label.setStyleSheet(_t(self, "color: {{text_soft}}; font-size: 12px;"))
         info_layout.addWidget(self.name_label)
         info_layout.addStretch()
         info_layout.addWidget(self.status_label)
@@ -145,13 +150,13 @@ class DownloadTaskWidget(QWidget):
         self.download_item.totalBytesChanged.connect(self.on_progress)
         self.download_item.stateChanged.connect(self.on_state_changed)
         
-        self.setStyleSheet("""
-            QWidget { background-color: #24283b; border-radius: 6px; }
-            QPushButton { background-color: #414868; color: #c0caf5; border: none; padding: 4px 10px; border-radius: 3px; }
-            QPushButton:hover { background-color: #7aa2f7; color: #1a1b26; }
-            QProgressBar { border: none; background-color: #1a1b26; }
-            QProgressBar::chunk { background-color: #7aa2f7; }
-        """)
+        self.setStyleSheet(_t(self, """
+            QWidget { background-color: {{surface_alt}}; border-radius: 6px; }
+            QPushButton { background-color: {{border}}; color: {{text}}; border: none; padding: 4px 10px; border-radius: 3px; }
+            QPushButton:hover { background-color: {{accent}}; color: {{surface}}; }
+            QProgressBar { border: none; background-color: {{surface}}; }
+            QProgressBar::chunk { background-color: {{accent}}; }
+        """))
 
     def format_size(self, bytes_size):
         for unit in ['B', 'KB', 'MB', 'GB']:
@@ -184,7 +189,7 @@ class DownloadTaskWidget(QWidget):
             self.progress.setMaximum(100)
             self.progress.setValue(100)
             self.status_label.setText("Completed")
-            self.status_label.setStyleSheet("color: #9ece6a; font-size: 12px;")
+            self.status_label.setStyleSheet(_t(self, "color: {{accent_alt}}; font-size: 12px;"))
             self.cancel_btn.hide()
             self.open_btn.show()
             self.folder_btn.show()
@@ -203,13 +208,13 @@ class DownloadTaskWidget(QWidget):
                 
         elif state == QWebEngineDownloadRequest.DownloadState.DownloadCancelled:
             self.status_label.setText("Cancelled")
-            self.status_label.setStyleSheet("color: #f7768e; font-size: 12px;")
+            self.status_label.setStyleSheet(_t(self, "color: {{danger}}; font-size: 12px;"))
             self.cancel_btn.hide()
             self.progress.hide()
             
         elif state == QWebEngineDownloadRequest.DownloadState.DownloadInterrupted:
             self.status_label.setText("Interrupted")
-            self.status_label.setStyleSheet("color: #f7768e; font-size: 12px;")
+            self.status_label.setStyleSheet(_t(self, "color: {{danger}}; font-size: 12px;"))
             self.cancel_btn.hide()
 
     def open_file(self, filepath):
@@ -236,18 +241,18 @@ class DownloadsDialog(QDialog):
         self.setWindowTitle("Downloads Manager")
         self.resize(600, 500)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
-        self.setStyleSheet("""
-            QDialog { background-color: #1a1b26; }
+        self.setStyleSheet(_t(self, """
+            QDialog { background-color: {{surface}}; color: {{text}}; }
             QScrollArea { border: none; background-color: transparent; }
-        """)
+        """))
         
         layout = QVBoxLayout(self)
         
         header_layout = QHBoxLayout()
         title = QLabel("Downloads")
-        title.setStyleSheet("color: #c0caf5; font-size: 18px; font-weight: bold;")
+        title.setStyleSheet(_t(self, "color: {{text}}; font-size: 18px; font-weight: bold;"))
         clear_btn = QPushButton("Clear History")
-        clear_btn.setStyleSheet("background-color: #f7768e; color: white; border: none; padding: 5px 10px; border-radius: 4px;")
+        clear_btn.setStyleSheet(_t(self, "background-color: {{danger}}; color: white; border: none; padding: 5px 10px; border-radius: 4px;"))
         clear_btn.clicked.connect(self.clear_history)
         
         header_layout.addWidget(title)

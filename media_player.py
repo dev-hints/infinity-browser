@@ -4,6 +4,7 @@ import subprocess
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
+from theme_manager import render_template, theme_from_widget
 
 class MediaPlayerWidget(QWidget):
     titleChanged = pyqtSignal(str)
@@ -11,7 +12,8 @@ class MediaPlayerWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("background-color: #1a1b26; color: #a9b1d6;")
+        self.theme = theme_from_widget(self)
+        self.setStyleSheet(render_template("background-color: {{surface}}; color: {{text_soft}};", self.theme))
         
         self.layout = QVBoxLayout(self)
         self.layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -19,13 +21,13 @@ class MediaPlayerWidget(QWidget):
         
         # Icon
         self.icon_label = QLabel("🎬")
-        self.icon_label.setStyleSheet("font-size: 72px; color: #7aa2f7;")
+        self.icon_label.setStyleSheet(render_template("font-size: 72px; color: {{accent}};", self.theme))
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.icon_label)
         
         # Title
         self.title_label = QLabel("Media Playback")
-        self.title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #c0caf5;")
+        self.title_label.setStyleSheet(render_template("font-size: 24px; font-weight: bold; color: {{text}};", self.theme))
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.title_label)
         
@@ -43,10 +45,10 @@ class MediaPlayerWidget(QWidget):
         # Button
         self.play_btn = QPushButton("▶ Open in System Player")
         self.play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.play_btn.setStyleSheet("""
+        self.play_btn.setStyleSheet(render_template("""
             QPushButton {
-                background-color: #7aa2f7;
-                color: #1a1b26;
+                background-color: {{accent}};
+                color: {{surface}};
                 border: none;
                 padding: 12px 24px;
                 border-radius: 6px;
@@ -54,12 +56,12 @@ class MediaPlayerWidget(QWidget):
                 font-size: 14px;
             }
             QPushButton:hover {
-                background-color: #89b4fa;
+                background-color: {{accent_alt}};
             }
             QPushButton:pressed {
-                background-color: #668ee0;
+                background-color: {{border}};
             }
-        """)
+        """, self.theme))
         self.play_btn.clicked.connect(self.open_external)
         self.layout.addWidget(self.play_btn, alignment=Qt.AlignmentFlag.AlignHCenter)
         

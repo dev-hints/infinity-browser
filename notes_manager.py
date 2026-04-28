@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QKeySequence, QShortcut, QAction
+from theme_manager import render_template, theme_from_widget
 
 NOTES_FILE = os.path.join(os.path.dirname(__file__), 'notes.json')
 
@@ -78,14 +79,14 @@ class NotesManager:
 
 NOTES_STYLE = """
 QDialog, QWidget {
-    background-color: #1a1b26;
-    color: #c0caf5;
+    background-color: {{surface}};
+    color: {{text}};
 }
 /* Sidebar */
 QListWidget {
-    background-color: #16161e;
+    background-color: {{surface_soft}};
     border: none;
-    border-right: 1px solid #2f334d;
+    border-right: 1px solid {{border_soft}};
     outline: none;
     padding: 4px;
 }
@@ -93,43 +94,43 @@ QListWidget::item {
     padding: 10px 12px;
     border-radius: 8px;
     margin: 2px 4px;
-    color: #a9b1d6;
+    color: {{text_soft}};
     font-size: 13px;
 }
 QListWidget::item:selected {
-    background-color: #3d59a1;
+    background-color: {{selection}};
     color: #ffffff;
 }
 QListWidget::item:hover:!selected {
-    background-color: #24283b;
-    color: #c0caf5;
+    background-color: {{surface_alt}};
+    color: {{text}};
 }
 /* Editor */
 QTextEdit {
-    background-color: #1a1b26;
-    color: #c0caf5;
+    background-color: {{surface}};
+    color: {{text}};
     border: none;
     font-size: 14px;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-family: '{{font_mono}}', 'Fira Code', 'Consolas', monospace;
     padding: 16px;
-    selection-background-color: #3d59a1;
+    selection-background-color: {{selection}};
     line-height: 1.6;
 }
 /* Title edit */
 QLineEdit {
     background-color: transparent;
-    color: #c0caf5;
+    color: {{text}};
     border: none;
-    border-bottom: 2px solid #2f334d;
+    border-bottom: 2px solid {{border_soft}};
     font-size: 18px;
     font-weight: bold;
     padding: 6px 2px;
 }
-QLineEdit:focus { border-bottom-color: #7aa2f7; }
+QLineEdit:focus { border-bottom-color: {{accent}}; }
 /* Buttons */
 QPushButton, QToolButton {
-    background-color: #24283b;
-    color: #a9b1d6;
+    background-color: {{surface_alt}};
+    color: {{text_soft}};
     border: none;
     border-radius: 6px;
     padding: 6px 14px;
@@ -137,38 +138,38 @@ QPushButton, QToolButton {
     font-weight: bold;
 }
 QPushButton:hover, QToolButton:hover {
-    background-color: #2f334d;
-    color: #c0caf5;
+    background-color: {{border_soft}};
+    color: {{text}};
 }
 QPushButton#NewBtn {
-    background-color: #7aa2f7;
-    color: #1a1b26;
+    background-color: {{accent}};
+    color: {{surface}};
     padding: 7px 18px;
 }
-QPushButton#NewBtn:hover { background-color: #89b4fa; }
-QPushButton#DelBtn { color: #f7768e; background-color: #3b1219; }
-QPushButton#DelBtn:hover { background-color: #f7768e; color: #1a1b26; }
+QPushButton#NewBtn:hover { background-color: {{accent_alt}}; }
+QPushButton#DelBtn { color: {{danger}}; background-color: {{danger_soft}}; }
+QPushButton#DelBtn:hover { background-color: {{danger}}; color: {{surface}}; }
 /* Labels */
 QLabel#Meta {
-    color: #565f89;
+    color: {{text_muted}};
     font-size: 11px;
     padding: 0 2px;
 }
 QLabel#SideTitle {
-    color: #7aa2f7;
+    color: {{accent}};
     font-size: 11px;
     font-weight: bold;
     letter-spacing: 1px;
     padding: 8px 12px 4px 12px;
 }
 QLabel#WordCount {
-    color: #414868;
+    color: {{border}};
     font-size: 11px;
     padding: 2px 8px;
 }
-QFrame#VSep { background-color: #2f334d; max-width: 1px; }
-QFrame#HSep { background-color: #2f334d; max-height: 1px; }
-QSplitter::handle { background-color: #2f334d; width: 1px; }
+QFrame#VSep { background-color: {{border_soft}}; max-width: 1px; }
+QFrame#HSep { background-color: {{border_soft}}; max-height: 1px; }
+QSplitter::handle { background-color: {{border_soft}}; width: 1px; }
 """
 
 
@@ -184,7 +185,8 @@ class NotesDialog(QDialog):
         self.setWindowTitle("📝  Notes")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(900, 600)
-        self.setStyleSheet(NOTES_STYLE)
+        self.theme = theme_from_widget(self)
+        self.setStyleSheet(render_template(NOTES_STYLE, self.theme))
 
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -195,7 +197,7 @@ class NotesDialog(QDialog):
 
         # ── Left sidebar ──────────────────────────────────────────────────────
         sidebar = QWidget()
-        sidebar.setStyleSheet("background-color: #16161e;")
+        sidebar.setStyleSheet(render_template("background-color: {{surface_soft}};", self.theme))
         sidebar.setFixedWidth(230)
         sidebar_lay = QVBoxLayout(sidebar)
         sidebar_lay.setContentsMargins(0, 0, 0, 0)
@@ -203,12 +205,12 @@ class NotesDialog(QDialog):
 
         # Header
         hdr = QWidget()
-        hdr.setStyleSheet("background-color: #16161e; border-bottom: 1px solid #2f334d;")
+        hdr.setStyleSheet(render_template("background-color: {{surface_soft}}; border-bottom: 1px solid {{border_soft}};", self.theme))
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(10, 10, 10, 10)
         hdr_title = QLabel("NOTES")
         hdr_title.setObjectName("SideTitle")
-        hdr_title.setStyleSheet("color: #7aa2f7; font-size: 11px; font-weight: bold; letter-spacing: 1.5px;")
+        hdr_title.setStyleSheet(render_template("color: {{accent}}; font-size: 11px; font-weight: bold; letter-spacing: 1.5px;", self.theme))
         new_btn = QPushButton("＋")
         new_btn.setObjectName("NewBtn")
         new_btn.setFixedSize(28, 28)
@@ -222,10 +224,11 @@ class NotesDialog(QDialog):
         # Search
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("🔍  Search notes…")
-        self.search_box.setStyleSheet(
-            "background-color: #1e2030; color: #c0caf5; border: none;"
-            "border-bottom: 1px solid #2f334d; padding: 8px 12px; font-size: 12px;"
-        )
+        self.search_box.setStyleSheet(render_template(
+            "background-color: {{surface_alt}}; color: {{text}}; border: none;"
+            "border-bottom: 1px solid {{border_soft}}; padding: 8px 12px; font-size: 12px;",
+            self.theme,
+        ))
         self.search_box.textChanged.connect(self._filter_list)
         sidebar_lay.addWidget(self.search_box)
 
@@ -250,7 +253,7 @@ class NotesDialog(QDialog):
 
         # Toolbar
         toolbar = QWidget()
-        toolbar.setStyleSheet("background-color: #1e2030; border-bottom: 1px solid #2f334d;")
+        toolbar.setStyleSheet(render_template("background-color: {{surface_alt}}; border-bottom: 1px solid {{border_soft}};", self.theme))
         tb_lay = QHBoxLayout(toolbar)
         tb_lay.setContentsMargins(14, 8, 14, 8)
         tb_lay.setSpacing(6)
@@ -274,7 +277,7 @@ class NotesDialog(QDialog):
 
         # Title area
         title_bar = QWidget()
-        title_bar.setStyleSheet("background-color: #1a1b26; padding: 0 16px;")
+        title_bar.setStyleSheet(render_template("background-color: {{surface}}; padding: 0 16px;", self.theme))
         title_bar_lay = QVBoxLayout(title_bar)
         title_bar_lay.setContentsMargins(16, 14, 16, 8)
         title_bar_lay.setSpacing(4)
@@ -298,7 +301,7 @@ class NotesDialog(QDialog):
 
         # Status bar
         status = QWidget()
-        status.setStyleSheet("background-color: #16161e; border-top: 1px solid #2f334d;")
+        status.setStyleSheet(render_template("background-color: {{surface_soft}}; border-top: 1px solid {{border_soft}};", self.theme))
         status_lay = QHBoxLayout(status)
         status_lay.setContentsMargins(14, 4, 14, 4)
         self.status_lbl = QLabel("Select or create a note to begin")

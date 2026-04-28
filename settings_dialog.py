@@ -3,25 +3,25 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QFileDialog, QFormLayout,
     QGroupBox, QTabWidget, QWidget, QCheckBox, QSlider,
-    QSpinBox, QFrame, QScrollArea, QSizePolicy
+    QSpinBox, QFrame, QScrollArea, QSizePolicy, QApplication
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from theme_manager import apply_theme, render_template
 
 STYLE = """
 QDialog {
-    background-color: #1a1b26;
-    color: #c0caf5;
+    background-color: {{surface}};
+    color: {{text}};
 }
 QTabWidget::pane {
-    border: 1px solid #2f334d;
+    border: 1px solid {{border_soft}};
     border-radius: 8px;
-    background-color: #1a1b26;
+    background-color: {{surface}};
     top: -1px;
 }
 QTabBar::tab {
-    background-color: #24283b;
-    color: #565f89;
+    background-color: {{surface_alt}};
+    color: {{text_muted}};
     border: none;
     padding: 8px 20px;
     margin-right: 2px;
@@ -30,20 +30,20 @@ QTabBar::tab {
     font-size: 12px;
 }
 QTabBar::tab:selected {
-    background-color: #7aa2f7;
-    color: #1a1b26;
+    background-color: {{accent}};
+    color: {{surface}};
 }
 QTabBar::tab:hover:!selected {
-    background-color: #2f334d;
-    color: #c0caf5;
+    background-color: {{border_soft}};
+    color: {{text}};
 }
 QGroupBox {
-    border: 1px solid #2f334d;
+    border: 1px solid {{border_soft}};
     border-radius: 8px;
     margin-top: 14px;
     padding: 12px 10px 10px 10px;
     font-weight: bold;
-    color: #7aa2f7;
+    color: {{accent}};
     font-size: 12px;
 }
 QGroupBox::title {
@@ -53,35 +53,35 @@ QGroupBox::title {
     padding: 0 4px;
 }
 QLabel {
-    color: #a9b1d6;
+    color: {{text_soft}};
     font-size: 13px;
 }
 QLabel#SectionDesc {
-    color: #565f89;
+    color: {{text_muted}};
     font-size: 11px;
     margin-bottom: 2px;
 }
 QLineEdit, QComboBox, QSpinBox {
-    background-color: #24283b;
-    color: #c0caf5;
-    border: 1px solid #414868;
+    background-color: {{surface_alt}};
+    color: {{text}};
+    border: 1px solid {{border}};
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 13px;
     min-height: 28px;
 }
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
-    border-color: #7aa2f7;
+    border-color: {{accent}};
 }
 QComboBox::drop-down { border: none; }
 QComboBox QAbstractItemView {
-    background-color: #24283b;
-    color: #c0caf5;
-    selection-background-color: #3d59a1;
-    border: 1px solid #414868;
+    background-color: {{surface_alt}};
+    color: {{text}};
+    selection-background-color: {{selection}};
+    border: 1px solid {{border}};
 }
 QCheckBox {
-    color: #a9b1d6;
+    color: {{text_soft}};
     font-size: 13px;
     spacing: 8px;
 }
@@ -89,61 +89,61 @@ QCheckBox::indicator {
     width: 18px;
     height: 18px;
     border-radius: 4px;
-    border: 2px solid #414868;
-    background-color: #24283b;
+    border: 2px solid {{border}};
+    background-color: {{surface_alt}};
 }
 QCheckBox::indicator:checked {
-    background-color: #7aa2f7;
-    border-color: #7aa2f7;
+    background-color: {{accent}};
+    border-color: {{accent}};
     image: none;
 }
-QCheckBox::indicator:hover { border-color: #7aa2f7; }
+QCheckBox::indicator:hover { border-color: {{accent}}; }
 QSlider::groove:horizontal {
     height: 4px;
-    background: #2f334d;
+    background: {{border_soft}};
     border-radius: 2px;
 }
 QSlider::handle:horizontal {
-    background: #7aa2f7;
+    background: {{accent}};
     width: 16px;
     height: 16px;
     margin: -6px 0;
     border-radius: 8px;
 }
-QSlider::sub-page:horizontal { background: #7aa2f7; border-radius: 2px; }
+QSlider::sub-page:horizontal { background: {{accent}}; border-radius: 2px; }
 QPushButton {
-    background-color: #2f334d;
-    color: #c0caf5;
+    background-color: {{border_soft}};
+    color: {{text}};
     border: none;
     padding: 7px 16px;
     border-radius: 6px;
     font-size: 13px;
     font-weight: bold;
 }
-QPushButton:hover { background-color: #414868; }
+QPushButton:hover { background-color: {{border}}; }
 QPushButton#SaveBtn {
-    background-color: #7aa2f7;
-    color: #1a1b26;
+    background-color: {{accent}};
+    color: {{surface}};
     padding: 8px 24px;
 }
-QPushButton#SaveBtn:hover { background-color: #89b4fa; }
+QPushButton#SaveBtn:hover { background-color: {{accent_alt}}; }
 QPushButton#DangerBtn {
-    background-color: #3b1219;
-    color: #f7768e;
+    background-color: {{danger_soft}};
+    color: {{danger}};
 }
-QPushButton#DangerBtn:hover { background-color: #f7768e; color: #1a1b26; }
+QPushButton#DangerBtn:hover { background-color: {{danger}}; color: {{surface}}; }
 QFrame#HSep {
-    background-color: #2f334d;
+    background-color: {{border_soft}};
     max-height: 1px;
 }
 QScrollArea { border: none; background: transparent; }
 QScrollBar:vertical {
-    background: #1a1b26;
+    background: {{surface}};
     width: 6px;
     border-radius: 3px;
 }
 QScrollBar::handle:vertical {
-    background: #414868;
+    background: {{border}};
     border-radius: 3px;
     min-height: 20px;
 }
@@ -174,10 +174,11 @@ class SettingsDialog(QDialog):
     def __init__(self, settings_manager, parent=None):
         super().__init__(parent)
         self.settings = settings_manager
+        self.current_theme = self.settings.get("ui_theme", "dark")
         self.setWindowTitle("Infinity — Settings")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(620, 580)
-        self.setStyleSheet(STYLE)
+        self.setStyleSheet(render_template(STYLE, self.current_theme))
 
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -185,7 +186,7 @@ class SettingsDialog(QDialog):
 
         # Header
         hdr = QLabel("⚙  Settings")
-        hdr.setStyleSheet("font-size: 20px; font-weight: bold; color: #c0caf5; padding-bottom: 4px;")
+        hdr.setStyleSheet(render_template("font-size: 20px; font-weight: bold; color: {{text}}; padding-bottom: 4px;", self.current_theme))
         root.addWidget(hdr)
         root.addWidget(_sep())
 
@@ -278,6 +279,14 @@ class SettingsDialog(QDialog):
         zoom_row.addWidget(self.zoom_slider)
         zoom_row.addWidget(self.zoom_label)
         form.addRow("Default Zoom:", zoom_row)
+
+        # Browser chrome theme
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem("Dark", "dark")
+        self.theme_combo.addItem("Light", "light")
+        saved_theme = self.settings.get("ui_theme", "dark")
+        self.theme_combo.setCurrentIndex(1 if saved_theme == "light" else 0)
+        form.addRow("Browser Theme:", self.theme_combo)
 
         lay.addWidget(grp)
         lay.addStretch()
@@ -453,6 +462,7 @@ class SettingsDialog(QDialog):
         s.set("show_home_btn", self.show_home_cb.isChecked())
 
         # Appearance
+        s.set("ui_theme",    self.theme_combo.currentData())
         s.set("font_size",    self.font_spin.value())
         s.set("default_zoom", self.zoom_slider.value())
 
@@ -494,6 +504,11 @@ class SettingsDialog(QDialog):
             # Show/hide home button
             nav = win.nav_bar
             nav.home_btn.setVisible(self.settings.get("show_home_btn"))
+
+            # Apply UI theme globally at runtime
+            app = QApplication.instance()
+            if app:
+                apply_theme(app, self.settings.get("ui_theme", "dark"))
 
             # Apply zoom to all open tabs
             zoom = self.settings.get("default_zoom") / 100.0

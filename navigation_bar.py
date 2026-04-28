@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton
 from PyQt6.QtCore import Qt, QUrl
+from theme_manager import theme_from_widget, tokens_for
 
 class NavigationBar(QWidget):
     def __init__(self, tab_manager, parent=None):
@@ -96,7 +97,7 @@ class NavigationBar(QWidget):
             if hasattr(self.window(), 'bookmark_manager'):
                 if url_str in self.window().bookmark_manager.get_bookmarks():
                     self.bookmark_btn.setText("★")
-                    self.bookmark_btn.setStyleSheet("color: #e0af68;")
+                    self.bookmark_btn.setStyleSheet(f"color: {self._theme_tokens()['bookmark']};")
                 else:
                     self.bookmark_btn.setText("☆")
                     self.bookmark_btn.setStyleSheet("")
@@ -111,7 +112,7 @@ class NavigationBar(QWidget):
 
         # Don't bookmark empty, new-tab, or internal pages
         if not url or qurl.scheme() in ("", "infinity") or url in ("about:blank",):
-            self._flash_bookmark_btn("#f7768e", "✕")  # red flash = can't bookmark
+            self._flash_bookmark_btn(self._theme_tokens()["danger"], "✕")  # red flash = can't bookmark
             return
 
         title = current_view.title() or url
@@ -124,8 +125,11 @@ class NavigationBar(QWidget):
         else:
             manager.add_bookmark(url, title)
             self.bookmark_btn.setText("★")
-            self.bookmark_btn.setStyleSheet("color: #e0af68;")
-            self._flash_bookmark_btn("#e0af68", "★")
+            self.bookmark_btn.setStyleSheet(f"color: {self._theme_tokens()['bookmark']};")
+            self._flash_bookmark_btn(self._theme_tokens()["bookmark"], "★")
+
+    def _theme_tokens(self):
+        return tokens_for(theme_from_widget(self))
 
     def _flash_bookmark_btn(self, color, symbol):
         """Brief color flash to give visual feedback."""
@@ -141,7 +145,7 @@ class NavigationBar(QWidget):
                 url = current_view.url().toString()
             if hasattr(self.window(), 'bookmark_manager') and url in self.window().bookmark_manager.get_bookmarks():
                 self.bookmark_btn.setText("★")
-                self.bookmark_btn.setStyleSheet("color: #e0af68;")
+                self.bookmark_btn.setStyleSheet(f"color: {self._theme_tokens()['bookmark']};")
             else:
                 self.bookmark_btn.setText("☆")
                 self.bookmark_btn.setStyleSheet("")
