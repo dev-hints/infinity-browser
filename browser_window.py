@@ -17,6 +17,7 @@ from download_manager import DownloadManager
 from ad_blocker import AdBlocker
 from notes_manager import NotesManager, NotesDialog
 from theme_manager import render_template, theme_from_widget
+from youtube_downloader import YouTubeDownloaderDialog, is_youtube_url
 
 ABOUT_STYLE = """
 QDialog { background-color: {{surface}}; color: {{text}}; }
@@ -439,6 +440,7 @@ class BrowserWindow(QMainWindow):
         
         # Connect menu actions
         self.setup_menu()
+        self.setup_shortcuts()
         
         # Connect tab changes to navigation bar updates
         self.tab_manager.currentChanged.connect(self.nav_bar.update_ui_for_tab)
@@ -492,20 +494,6 @@ class BrowserWindow(QMainWindow):
                 elif key == Qt.Key.Key_J:        # Downloads
                     self.download_manager.show_dialog()
                     return True
-                elif key == Qt.Key.Key_T:        # New tab
-                    self.tab_manager.add_new_tab()
-                    return True
-                elif key == Qt.Key.Key_W:        # Close tab
-                    idx = self.tab_manager.currentIndex()
-                    self.tab_manager.close_tab(idx)
-                    return True
-                elif key == Qt.Key.Key_R:        # Reload
-                    self.tab_manager.reload_page()
-                    return True
-                elif key == Qt.Key.Key_L:        # Focus URL bar
-                    self.nav_bar.url_bar.setFocus()
-                    self.nav_bar.url_bar.selectAll()
-                    return True
         return super().eventFilter(obj, event)
 
     def setup_menu(self):
@@ -527,6 +515,7 @@ class BrowserWindow(QMainWindow):
         action("History",            "Ctrl+H",       self.show_history)
         action("Notes",              "Ctrl+Shift+N", self.show_notes)
         action("Downloads",          "Ctrl+J",       self.download_manager.show_dialog)
+        action("YouTube Downloader", "",             self.show_youtube_downloader)
         action("Passwords",          "",             self.show_passwords)
         action("Print to PDF",       "Ctrl+P",       self.print_to_pdf)
         self.menu.addSeparator()
@@ -536,6 +525,25 @@ class BrowserWindow(QMainWindow):
         action("About Infinity",     "",        self.show_about)
 
         self.nav_bar.menu_btn.setMenu(self.menu)
+
+    def setup_shortcuts(self):
+        """Window shortcuts that continue to work when WebEngine has focus."""
+        self._shortcuts = []
+        shortcuts = (
+            ("Ctrl+T", self.tab_manager.add_new_tab),
+            ("Ctrl+W", lambda: self.tab_manager.close_tab(self.tab_manager.currentIndex())),
+            ("Ctrl+R", self.tab_manager.reload_page),
+            ("Ctrl+L", self._focus_url_bar),
+        )
+        for sequence, slot in shortcuts:
+            shortcut = QShortcut(QKeySequence(sequence), self)
+            shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+            shortcut.activated.connect(slot)
+            self._shortcuts.append(shortcut)
+
+    def _focus_url_bar(self):
+        self.nav_bar.url_bar.setFocus()
+        self.nav_bar.url_bar.selectAll()
 
     def _show_panel(self, attr, DialogClass, *args):
         """Show a non-modal floating window. Re-raise if already open."""
@@ -577,6 +585,34 @@ class BrowserWindow(QMainWindow):
 
     def show_notes(self):
         self._show_panel('_notes_panel', NotesDialog, self.notes_manager, self)
+
+    def is_youtube_url(self, url):
+        return is_youtube_url(url)
+
+    def current_page_url(self):
+        current_view = self.tab_manager.currentWidget()
+        if current_view:
+            return current_view.url().toString()
+        return ""
+
+    def show_youtube_downloader(self):
+        current_url = self.current_page_url()
+        initial_url = current_url if is_youtube_url(current_url) else ""
+        panel = getattr(self, '_youtube_downloader_panel', None)
+        if panel is not None and panel.isVisible():
+            if initial_url:
+                panel.url_input.setText(initial_url)
+                panel.fetch_info()
+            panel.raise_()
+            panel.activateWindow()
+            return
+        self._show_panel(
+            '_youtube_downloader_panel',
+            YouTubeDownloaderDialog,
+            initial_url,
+            self.settings_manager.get("download_dir"),
+            self
+        )
         
     def show_about(self):
         self._show_panel('_about_panel', AboutDialog, self)
@@ -621,4 +657,3 @@ class BrowserWindow(QMainWindow):
         self.progress_bar.setValue(100)
         # Small delay before hiding to show the completed state briefly
         QTimer.singleShot(300, self.progress_bar.hide)
-

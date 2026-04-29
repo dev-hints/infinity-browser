@@ -1,8 +1,12 @@
 import os
-from PyQt6.QtWidgets import QTabWidget, QWidget, QVBoxLayout, QPushButton, QTabBar, QStackedLayout
+from PyQt6.QtWidgets import (
+    QTabWidget, QWidget, QVBoxLayout, QPushButton, QTabBar,
+    QStackedLayout, QSizePolicy
+)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
-from PyQt6.QtCore import QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QUrl, pyqtSignal
+from theme_manager import web_background_color
 from scheme_handler import InfinitySchemeHandler
 
 class CustomTabBar(QTabBar):
@@ -10,6 +14,7 @@ class CustomTabBar(QTabBar):
         super().__init__(parent)
         self.setTabsClosable(True)
         self.setMovable(True)
+        self.setDrawBase(False)
 
 class CustomWebView(QWebEngineView):
     def __init__(self, tab_manager, parent=None):
@@ -36,6 +41,7 @@ class BrowserTab(QWidget):
         self.web_view = CustomWebView(self.tab_manager)
         self._page = QWebEnginePage(self.tab_manager.profile, self.web_view)
         self.web_view.setPage(self._page)
+        self.apply_theme()
         self.layout.addWidget(self.web_view)
         
         # Handle print requests from within the page
@@ -44,7 +50,7 @@ class BrowserTab(QWidget):
         
         # Media Player
         from media_player import MediaPlayerWidget
-        self.media_player = MediaPlayerWidget()
+        self.media_player = MediaPlayerWidget(self)
         self.layout.addWidget(self.media_player)
         
         # Connect Web View Signals
@@ -59,6 +65,17 @@ class BrowserTab(QWidget):
         self.media_player.urlChanged.connect(self.urlChanged.emit)
         
         self.is_media = False
+
+    def apply_theme(self):
+        theme = "dark"
+        if self.tab_manager.parent_window and hasattr(self.tab_manager.parent_window, "settings_manager"):
+            theme = self.tab_manager.parent_window.settings_manager.get("ui_theme", "dark")
+        color = web_background_color(theme)
+        try:
+            self._page.setBackgroundColor(color)
+        except Exception:
+            pass
+        self.web_view.setStyleSheet(f"background-color: {color.name()};")
 
     def load(self, url):
         url_str = url.toString().lower()
@@ -102,15 +119,22 @@ class TabManager(QTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_window = parent
+        self.setTabBar(CustomTabBar(self))
         self.setDocumentMode(True)
         self.setTabsClosable(True)
         self.tabCloseRequested.connect(self.close_tab)
         
         # Corner widget for new tab
-        self.new_tab_btn = QPushButton("+")
-        self.new_tab_btn.setObjectName("NavButton")
+        self.new_tab_btn = QPushButton("+", self)
+        self.new_tab_btn.setObjectName("NewTabButton")
+        self.new_tab_btn.setFixedSize(40, 34)
+        self.new_tab_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.new_tab_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.new_tab_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.new_tab_btn.setToolTip("New Tab")
         self.new_tab_btn.clicked.connect(self.add_new_tab)
-        self.setCornerWidget(self.new_tab_btn)
+        self.setCornerWidget(self.new_tab_btn, Qt.Corner.TopRightCorner)
+        self.new_tab_btn.show()
 
         # Profile for settings, adblock, downloads
         self.profile = QWebEngineProfile("InfinityProfile", self)
@@ -177,8 +201,23 @@ class TabManager(QTabWidget):
             url = self._get_home_url()
         
         tab = self.add_empty_tab()
+        self._apply_default_zoom(tab)
         tab.load(url)
         return tab
+
+    def _apply_default_zoom(self, tab):
+        if self.parent_window and hasattr(self.parent_window, "settings_manager"):
+            zoom = self.parent_window.settings_manager.get("default_zoom", 100) / 100.0
+            if hasattr(tab, "web_view"):
+                tab.web_view.setZoomFactor(zoom)
+
+    def apply_theme_to_tabs(self, reload_internal_pages=False):
+        for i in range(self.count()):
+            tab = self.widget(i)
+            if hasattr(tab, "apply_theme"):
+                tab.apply_theme()
+            if reload_internal_pages and hasattr(tab, "url") and tab.url().scheme() == "infinity":
+                tab.reload()
 
     def close_tab(self, index):
         if self.count() > 1:
@@ -203,6 +242,10 @@ class TabManager(QTabWidget):
             self.parent_window.nav_bar.url_bar.setText(display)
             self.parent_window.nav_bar.back_btn.setEnabled(view.history().canGoBack())
             self.parent_window.nav_bar.forward_btn.setEnabled(view.history().canGoForward())
+            if hasattr(self.parent_window.nav_bar, "youtube_btn"):
+                self.parent_window.nav_bar.youtube_btn.setEnabled(
+                    self.parent_window.is_youtube_url(url_str)
+                )
 
     def on_load_started(self, view):
         if self.indexOf(view) == self.currentIndex() and self.parent_window:

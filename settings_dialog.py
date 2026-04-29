@@ -429,11 +429,7 @@ class SettingsDialog(QDialog):
         try:
             win = self.parent()
             if hasattr(win, 'history_manager'):
-                win.history_manager.bookmarks = {}
-                import json, os
-                hfile = os.path.join(os.path.dirname(__file__), 'history.json')
-                with open(hfile, 'w') as f:
-                    json.dump([], f)
+                win.history_manager.clear_history()
         except Exception as e:
             print("Clear history error:", e)
 
@@ -509,6 +505,8 @@ class SettingsDialog(QDialog):
             app = QApplication.instance()
             if app:
                 apply_theme(app, self.settings.get("ui_theme", "dark"))
+            if hasattr(win.tab_manager, "apply_theme_to_tabs"):
+                win.tab_manager.apply_theme_to_tabs(reload_internal_pages=True)
 
             # Apply zoom to all open tabs
             zoom = self.settings.get("default_zoom") / 100.0

@@ -4,6 +4,11 @@
     font-family: '{{font_ui}}', 'Segoe UI', sans-serif;
 }
 
+QWidget {
+    background-color: {{window_bg}};
+    color: {{text}};
+}
+
 /* Main Window */
 QMainWindow {
     background-color: {{window_bg}};
@@ -71,6 +76,10 @@ QPushButton#NavButton:hover {
     color: {{accent}};
 }
 
+QPushButton#NavButton[bookmarked="true"] {
+    color: {{bookmark}};
+}
+
 QLineEdit#UrlBar {
     background-color: {{surface_alt}};
     border: 1px solid {{border}};
@@ -101,6 +110,18 @@ QProgressBar#LoadingBar::chunk {
 QTabWidget::pane {
     border: none;
     background-color: {{surface}};
+    top: -1px;
+}
+
+QTabWidget::right-corner {
+    background-color: {{surface}};
+    border-bottom: 1px solid {{border_soft}};
+    width: 42px;
+}
+
+QTabBar {
+    background-color: {{surface}};
+    qproperty-drawBase: 0;
 }
 
 QTabBar::tab {
@@ -110,6 +131,7 @@ QTabBar::tab {
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
     margin-right: 2px;
+    min-height: 30px;
     min-width: 120px;
     max-width: 250px;
     border: 1px solid transparent;
@@ -123,6 +145,7 @@ QTabBar::tab:selected {
     border-top: 2px solid {{accent}};
     border-left: 1px solid {{border}};
     border-right: 1px solid {{border}};
+    border-bottom: 1px solid {{surface_alt}};
 }
 
 QTabBar::tab:hover:!selected {
@@ -141,6 +164,25 @@ QTabBar::close-button {
 
 QTabBar::close-button:hover {
     image: url(icons/close_tab_hover.svg);
+}
+
+QPushButton#NewTabButton {
+    background-color: {{surface}};
+    color: {{text_soft}};
+    border: 1px solid transparent;
+    border-bottom: 1px solid {{border_soft}};
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    font-size: 20px;
+    font-weight: 500;
+    min-width: 40px;
+    min-height: 32px;
+}
+
+QPushButton#NewTabButton:hover {
+    background-color: {{surface_soft}};
+    color: {{accent}};
 }
 
 /* Scrollbars */

@@ -45,6 +45,14 @@ class NavigationBar(QWidget):
         self.bookmark_btn.setObjectName("NavButton")
         self.bookmark_btn.clicked.connect(self.toggle_bookmark)
         self.layout.addWidget(self.bookmark_btn)
+
+        # YouTube Downloader Button
+        self.youtube_btn = QPushButton("YT↓")
+        self.youtube_btn.setObjectName("NavButton")
+        self.youtube_btn.setToolTip("YouTube Downloader")
+        self.youtube_btn.clicked.connect(lambda: self.window().show_youtube_downloader())
+        self.youtube_btn.setEnabled(False)
+        self.layout.addWidget(self.youtube_btn)
         
         # Settings / Menu Button
         self.menu_btn = QPushButton("⋮")
@@ -96,11 +104,12 @@ class NavigationBar(QWidget):
             # Check if bookmarked
             if hasattr(self.window(), 'bookmark_manager'):
                 if url_str in self.window().bookmark_manager.get_bookmarks():
-                    self.bookmark_btn.setText("★")
-                    self.bookmark_btn.setStyleSheet(f"color: {self._theme_tokens()['bookmark']};")
+                    self._set_bookmark_state(True)
                 else:
-                    self.bookmark_btn.setText("☆")
-                    self.bookmark_btn.setStyleSheet("")
+                    self._set_bookmark_state(False)
+
+            if hasattr(self.window(), "is_youtube_url"):
+                self.youtube_btn.setEnabled(self.window().is_youtube_url(url_str))
 
     def toggle_bookmark(self):
         current_view = self.tab_manager.currentWidget()
@@ -120,16 +129,20 @@ class NavigationBar(QWidget):
 
         if url in manager.get_bookmarks():
             manager.remove_bookmark(url)
-            self.bookmark_btn.setText("☆")
-            self.bookmark_btn.setStyleSheet("")
+            self._set_bookmark_state(False)
         else:
             manager.add_bookmark(url, title)
-            self.bookmark_btn.setText("★")
-            self.bookmark_btn.setStyleSheet(f"color: {self._theme_tokens()['bookmark']};")
+            self._set_bookmark_state(True)
             self._flash_bookmark_btn(self._theme_tokens()["bookmark"], "★")
 
     def _theme_tokens(self):
         return tokens_for(theme_from_widget(self))
+
+    def _set_bookmark_state(self, bookmarked):
+        self.bookmark_btn.setText("★" if bookmarked else "☆")
+        self.bookmark_btn.setProperty("bookmarked", bool(bookmarked))
+        self.bookmark_btn.style().unpolish(self.bookmark_btn)
+        self.bookmark_btn.style().polish(self.bookmark_btn)
 
     def _flash_bookmark_btn(self, color, symbol):
         """Brief color flash to give visual feedback."""
@@ -144,10 +157,9 @@ class NavigationBar(QWidget):
             if current_view:
                 url = current_view.url().toString()
             if hasattr(self.window(), 'bookmark_manager') and url in self.window().bookmark_manager.get_bookmarks():
-                self.bookmark_btn.setText("★")
-                self.bookmark_btn.setStyleSheet(f"color: {self._theme_tokens()['bookmark']};")
-            else:
-                self.bookmark_btn.setText("☆")
                 self.bookmark_btn.setStyleSheet("")
+                self._set_bookmark_state(True)
+            else:
+                self.bookmark_btn.setStyleSheet("")
+                self._set_bookmark_state(False)
         QTimer.singleShot(600, restore)
-

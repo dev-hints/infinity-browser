@@ -95,7 +95,7 @@ def load_app_stylesheet(theme_name: str | None) -> str:
 def build_palette(theme_name: str | None) -> QPalette:
     t = tokens_for(theme_name)
     palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(t["surface"]))
+    palette.setColor(QPalette.ColorRole.Window, QColor(t["window_bg"]))
     palette.setColor(QPalette.ColorRole.WindowText, QColor(t["text"]))
     palette.setColor(QPalette.ColorRole.Base, QColor(t["surface_alt"]))
     palette.setColor(QPalette.ColorRole.AlternateBase, QColor(t["surface"]))
@@ -108,6 +108,10 @@ def build_palette(theme_name: str | None) -> QPalette:
     palette.setColor(QPalette.ColorRole.Highlight, QColor(t["accent"]))
     palette.setColor(QPalette.ColorRole.HighlightedText, QColor("#ffffff"))
     return palette
+
+
+def web_background_color(theme_name: str | None) -> QColor:
+    return QColor(tokens_for(theme_name)["window_bg"])
 
 
 def apply_theme(app, theme_name: str | None) -> str:
