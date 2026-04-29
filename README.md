@@ -527,4 +527,4 @@ See the respective project websites for full license details.
 
 ---
 
-Copyright 2026 Ayush Kumar Maurya. All rights reserved.
+Copyright 2026 StrangeInfinity. All rights reserved.
