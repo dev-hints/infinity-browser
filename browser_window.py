@@ -1,3 +1,5 @@
+import time
+
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QSizePolicy, QMenu, QDialog, QFrame, QProgressBar, QFileDialog,
@@ -18,6 +20,7 @@ from ad_blocker import AdBlocker
 from notes_manager import NotesManager, NotesDialog
 from theme_manager import render_template, theme_from_widget
 from youtube_downloader import YouTubeDownloaderDialog, is_youtube_url
+from qr_generator import QRGeneratorDialog
 
 ABOUT_STYLE = """
 QDialog { background-color: {{surface}}; color: {{text}}; }
@@ -37,7 +40,7 @@ QTabBar::tab {
     font-weight: bold;
     font-size: 12px;
 }
-QTabBar::tab:selected { background-color: {{accent}}; color: {{surface}}; }
+QTabBar::tab:selected { background-color: {{accent}}; color: #ffffff; }
 QTabBar::tab:hover:!selected { background-color: {{border_soft}}; color: {{text}}; }
 QLabel { color: {{text_soft}}; }
 QFrame#HSep { background-color: {{border_soft}}; max-height: 1px; }
@@ -47,7 +50,10 @@ QPushButton {
     border-radius: 6px; font-weight: bold;
 }
 QPushButton:hover { background-color: {{border}}; }
-QScrollArea { border: none; background: transparent; }
+QScrollArea, QScrollArea > QWidget, QScrollArea > QWidget > QWidget {
+    border: none;
+    background: {{surface}};
+}
 QScrollBar:vertical {
     background: {{surface}}; width: 6px; border-radius: 3px;
 }
@@ -115,7 +121,7 @@ class AboutDialog(QDialog):
         foot_lay = QHBoxLayout(footer)
         foot_lay.setContentsMargins(20, 12, 20, 12)
         copy = QLabel("© 2026 Infinity Browser Project. All rights reserved.")
-        copy.setStyleSheet(render_template("font-size: 11px; color: {{border}};", self.theme))
+        copy.setStyleSheet(render_template("font-size: 11px; color: {{text_muted}};", self.theme))
         foot_lay.addWidget(copy)
         foot_lay.addStretch()
         close_btn = QPushButton("Close")
@@ -142,8 +148,9 @@ class AboutDialog(QDialog):
                 self.theme,
             ))
             vl.addWidget(t)
-            b = QLabel(body)
-            b.setStyleSheet(render_template("font-size: 13px; color: {{text_soft}}; line-height: 1.6;", self.theme))
+            body_color = render_template("{{text_soft}}", self.theme)
+            b = QLabel(f"<span style='color:{body_color};'>{body}</span>")
+            b.setStyleSheet(f"font-size: 13px; color: {body_color}; line-height: 1.6;")
             b.setWordWrap(True)
             b.setTextFormat(Qt.TextFormat.RichText)
             vl.addWidget(b)
@@ -152,7 +159,7 @@ class AboutDialog(QDialog):
                 lbl = QLabel(f'<a href="{link}" style="{link_style}">'
                              f'{link_label or link}</a>')
                 lbl.setOpenExternalLinks(True)
-                lbl.setStyleSheet("font-size: 12px;")
+                lbl.setStyleSheet(render_template("font-size: 12px; color: {{link}};", self.theme))
                 vl.addWidget(lbl)
             return box
 
@@ -174,11 +181,11 @@ class AboutDialog(QDialog):
         lay.addWidget(self._hsep())
         lay.addWidget(section(
             "Developer",
-            "<b>Ayush Kumar Maurya</b><br>"
+            "<b>StrangeInfinity</b><br>"
             "Independent software developer passionate about open-source tooling, "
             "privacy-respecting software, and native Linux applications.",
-            "https://github.com/dev-hints",
-            "github.com/dev-hints"
+            "https://github.com/StrangeInfinity",
+            "github.com/StrangeInfinity"
         ))
         lay.addWidget(self._hsep())
         lay.addWidget(section(
@@ -203,7 +210,7 @@ class AboutDialog(QDialog):
             vl = QVBoxLayout(box)
             vl.setSpacing(6)
             vl.setContentsMargins(0, 0, 0, 0)
-            hdr_meta_color = render_template("{{border}}", self.theme)
+            hdr_meta_color = render_template("{{text_muted}}", self.theme)
             hdr = QLabel(f"{version}  <span style='color:{hdr_meta_color};font-size:11px;'>— {date}</span>")
             hdr.setStyleSheet(render_template("font-size: 14px; font-weight: bold; color: {{accent}};", self.theme))
             hdr.setTextFormat(Qt.TextFormat.RichText)
@@ -228,6 +235,8 @@ class AboutDialog(QDialog):
             "Browsing history with full search capability",
             "PDF viewer via native Chromium PDF plugin",
             "Local file opener (Ctrl+O) with format-aware file dialog",
+            "Browser fullscreen toggle (F11) and site video fullscreen support",
+            "Built-in QR generator for the current page, websites, and text",
             "Comprehensive settings: Privacy, Security, Appearance, Downloads",
             "Frameless window with custom title bar and system controls",
         ]))
@@ -252,8 +261,9 @@ class AboutDialog(QDialog):
                 "letter-spacing: 0.5px;",
                 self.theme,
             ))
-            b = QLabel(body)
-            b.setStyleSheet(render_template("font-size: 13px; color: {{text_soft}}; line-height: 1.6;", self.theme))
+            body_color = render_template("{{text_soft}}", self.theme)
+            b = QLabel(f"<span style='color:{body_color};'>{body}</span>")
+            b.setStyleSheet(f"font-size: 13px; color: {body_color}; line-height: 1.6;")
             b.setWordWrap(True)
             b.setTextFormat(Qt.TextFormat.RichText)
             vl.addWidget(t)
@@ -394,6 +404,12 @@ class BrowserWindow(QMainWindow):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.resize(1200, 800)
+        self._browser_fullscreen = False
+        self._web_fullscreen_tab = None
+        self._web_fullscreen_started_from_browser_fullscreen = False
+        self._was_maximized_before_fullscreen = False
+        self._main_layout_fullscreen_margins = None
+        self._last_fullscreen_toggle_at = 0.0
         
         # Main central widget with rounded corners background
         self.central_widget = QWidget()
@@ -473,7 +489,15 @@ class BrowserWindow(QMainWindow):
             ctrl = Qt.KeyboardModifier.ControlModifier
             ctrl_shift = ctrl | Qt.KeyboardModifier.ShiftModifier
 
-            if mods == ctrl_shift:
+            if self._is_plain_key_event(mods):
+                if key == Qt.Key.Key_F11:        # Browser fullscreen
+                    self.toggle_browser_fullscreen()
+                    return True
+                if key == Qt.Key.Key_Escape and self._browser_fullscreen:
+                    self.toggle_browser_fullscreen()
+                    return True
+
+            elif mods == ctrl_shift:
                 if key == Qt.Key.Key_N:          # Notes
                     self.show_notes()
                     return True
@@ -501,9 +525,13 @@ class BrowserWindow(QMainWindow):
 
         def action(label, shortcut, slot):
             a = QAction(label, self)
-            a.setShortcut(QKeySequence(shortcut))   # shows the hint in the menu
+            if shortcut:
+                a.setShortcut(QKeySequence(shortcut))   # shows the hint in the menu
+                a.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
             a.triggered.connect(slot)
             self.menu.addAction(a)
+            if shortcut:
+                self.addAction(a)
             return a
 
         # Open File
@@ -515,6 +543,8 @@ class BrowserWindow(QMainWindow):
         action("History",            "Ctrl+H",       self.show_history)
         action("Notes",              "Ctrl+Shift+N", self.show_notes)
         action("Downloads",          "Ctrl+J",       self.download_manager.show_dialog)
+        action("Fullscreen (F11)",   "",             self.toggle_browser_fullscreen)
+        action("QR Generator",       "",             self.show_qr_generator)
         action("YouTube Downloader", "",             self.show_youtube_downloader)
         action("Passwords",          "",             self.show_passwords)
         action("Print to PDF",       "Ctrl+P",       self.print_to_pdf)
@@ -540,6 +570,121 @@ class BrowserWindow(QMainWindow):
             shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
             shortcut.activated.connect(slot)
             self._shortcuts.append(shortcut)
+
+    def toggle_browser_fullscreen(self):
+        """Toggle fullscreen for the whole browser window."""
+        if self._web_fullscreen_tab is not None:
+            return
+
+        now = time.monotonic()
+        if now - self._last_fullscreen_toggle_at < 0.25:
+            return
+        self._last_fullscreen_toggle_at = now
+
+        if self._browser_fullscreen or self.isFullScreen():
+            self._browser_fullscreen = False
+            self._set_browser_chrome_visible(True)
+            self._restore_window_after_fullscreen()
+        else:
+            self._was_maximized_before_fullscreen = self.isMaximized()
+            self._browser_fullscreen = True
+            self._set_browser_chrome_visible(False)
+            self.showFullScreen()
+            self.raise_()
+            self.activateWindow()
+        self._sync_fullscreen_button()
+
+    def handle_fullscreen_request(self, tab, request):
+        """Accept page fullscreen requests, including YouTube's video button."""
+        request.accept()
+        if request.toggleOn():
+            self._enter_web_fullscreen(tab)
+        else:
+            self._exit_web_fullscreen()
+
+    def _enter_web_fullscreen(self, tab):
+        if self._web_fullscreen_tab is not None:
+            return
+
+        self._web_fullscreen_tab = tab
+        self._web_fullscreen_started_from_browser_fullscreen = self._browser_fullscreen or self.isFullScreen()
+        self._was_maximized_before_fullscreen = self.isMaximized()
+        index = self.tab_manager.indexOf(tab)
+        if index != -1:
+            self.tab_manager.setCurrentIndex(index)
+
+        self._set_browser_chrome_visible(False)
+        if not self.isFullScreen():
+            self.showFullScreen()
+
+    def _exit_web_fullscreen(self):
+        if self._web_fullscreen_tab is None:
+            return
+
+        self._web_fullscreen_tab = None
+        self._set_browser_chrome_visible(True)
+        if not self._web_fullscreen_started_from_browser_fullscreen:
+            self._restore_window_after_fullscreen()
+        self._sync_fullscreen_button()
+
+    def _set_browser_chrome_visible(self, visible):
+        self.title_bar.setVisible(visible)
+        self.nav_bar.setVisible(visible)
+        self.tab_manager.tabBar().setVisible(visible)
+        corner = self.tab_manager.cornerWidget(Qt.Corner.TopRightCorner)
+        if corner:
+            corner.setVisible(visible)
+        if visible:
+            if self.progress_bar.value() < 100:
+                self.progress_bar.show()
+        else:
+            self.progress_bar.hide()
+
+        if visible:
+            if self._main_layout_fullscreen_margins is not None:
+                self.main_layout.setContentsMargins(*self._main_layout_fullscreen_margins)
+                self._main_layout_fullscreen_margins = None
+        else:
+            if self._main_layout_fullscreen_margins is None:
+                margins = self.main_layout.contentsMargins()
+                self._main_layout_fullscreen_margins = (
+                    margins.left(), margins.top(), margins.right(), margins.bottom()
+                )
+            self.main_layout.setContentsMargins(0, 0, 0, 0)
+
+    def _restore_window_after_fullscreen(self):
+        if self._was_maximized_before_fullscreen:
+            self.showMaximized()
+        else:
+            self.showNormal()
+
+    def _sync_fullscreen_button(self):
+        if hasattr(self, "nav_bar") and hasattr(self.nav_bar, "fullscreen_btn"):
+            if self._browser_fullscreen or self.isFullScreen():
+                self.nav_bar.fullscreen_btn.setText("⛶")
+                self.nav_bar.fullscreen_btn.setToolTip("Exit Browser Fullscreen (F11)")
+            else:
+                self.nav_bar.fullscreen_btn.setText("⛶")
+                self.nav_bar.fullscreen_btn.setToolTip("Toggle Browser Fullscreen (F11)")
+
+    def _is_plain_key_event(self, modifiers):
+        shortcut_modifiers = (
+            Qt.KeyboardModifier.ControlModifier |
+            Qt.KeyboardModifier.AltModifier |
+            Qt.KeyboardModifier.MetaModifier
+        )
+        return not bool(modifiers & shortcut_modifiers)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_F11 and self._is_plain_key_event(event.modifiers()):
+            self.toggle_browser_fullscreen()
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Escape and self._browser_fullscreen:
+            self.toggle_browser_fullscreen()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def _focus_url_bar(self):
         self.nav_bar.url_bar.setFocus()
@@ -613,6 +758,18 @@ class BrowserWindow(QMainWindow):
             self.settings_manager.get("download_dir"),
             self
         )
+
+    def show_qr_generator(self):
+        initial_text = self.current_page_url()
+        panel = getattr(self, '_qr_generator_panel', None)
+        if panel is not None and panel.isVisible():
+            if initial_text:
+                panel.input.setText(initial_text)
+                panel.generate()
+            panel.raise_()
+            panel.activateWindow()
+            return
+        self._show_panel('_qr_generator_panel', QRGeneratorDialog, initial_text, self)
         
     def show_about(self):
         self._show_panel('_about_panel', AboutDialog, self)

@@ -53,6 +53,20 @@ class NavigationBar(QWidget):
         self.youtube_btn.clicked.connect(lambda: self.window().show_youtube_downloader())
         self.youtube_btn.setEnabled(False)
         self.layout.addWidget(self.youtube_btn)
+
+        # QR Generator Button
+        self.qr_btn = QPushButton("QR")
+        self.qr_btn.setObjectName("NavButton")
+        self.qr_btn.setToolTip("QR Generator")
+        self.qr_btn.clicked.connect(lambda: self.window().show_qr_generator())
+        self.layout.addWidget(self.qr_btn)
+
+        # Browser Fullscreen Button
+        self.fullscreen_btn = QPushButton("⛶")
+        self.fullscreen_btn.setObjectName("NavButton")
+        self.fullscreen_btn.setToolTip("Toggle Browser Fullscreen (F11)")
+        self.fullscreen_btn.clicked.connect(lambda: self.window().toggle_browser_fullscreen())
+        self.layout.addWidget(self.fullscreen_btn)
         
         # Settings / Menu Button
         self.menu_btn = QPushButton("⋮")

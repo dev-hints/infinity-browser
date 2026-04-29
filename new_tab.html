@@ -64,15 +64,58 @@
             z-index: 10;
             text-align: center;
             width: 100%;
-            max-width: 600px;
+            max-width: 680px;
             padding: 20px;
         }
 
+        .logo-wrap {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 2px;
+        }
+
         .logo {
-            font-size: 7rem;
-            color: var(--text-accent);
-            text-shadow: 0 0 30px rgba(122, 162, 247, 0.4);
-            margin-bottom: -15px;
+            position: relative;
+            display: inline-block;
+            font-size: clamp(8.5rem, 22vw, 15rem);
+            line-height: 0.82;
+            color: transparent;
+            background:
+                linear-gradient(
+                    100deg,
+                    var(--text-accent) 0%,
+                    var(--text-link) 18%,
+                    var(--text-main) 31%,
+                    color-mix(in srgb, var(--text-accent) 22%, white) 43%,
+                    var(--text-main) 55%,
+                    var(--text-link) 74%,
+                    var(--text-accent) 100%
+                );
+            background-size: 260% 100%;
+            background-position: 0% 50%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            filter:
+                drop-shadow(0 0 5px color-mix(in srgb, var(--text-accent) 55%, transparent))
+                drop-shadow(0 0 16px color-mix(in srgb, var(--text-link) 34%, transparent));
+            text-shadow:
+                0 0 7px color-mix(in srgb, var(--card-bg) 75%, transparent),
+                0 0 18px color-mix(in srgb, var(--text-accent) 35%, transparent),
+                0 0 34px color-mix(in srgb, var(--text-link) 24%, transparent);
+            animation:
+                symbolFlow 4.8s linear infinite,
+                logoBreathe 4.8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes symbolFlow {
+            from { background-position: 0% 50%; }
+            to { background-position: 260% 50%; }
+        }
+
+        @keyframes logoBreathe {
+            0%, 100% { opacity: 0.95; }
+            50% { opacity: 1; }
         }
 
         h1 {
@@ -189,7 +232,9 @@
 <body>
     <div class="stars"></div>
     <div class="container">
-        <div class="logo">∞</div>
+        <div class="logo-wrap" aria-hidden="true">
+            <div class="logo">∞</div>
+        </div>
         <h1>INFINITY</h1>
         
         <form class="search-box" onsubmit="doSearch(event)">
@@ -214,7 +259,7 @@
     </div>
 
     <div class="footer">
-        <span class="brand">∞ INFINITY BROWSER</span> • Designed & Developed by <span class="dev">Ayush Kumar Maurya</span>
+        <span class="brand">∞ INFINITY BROWSER</span> • Designed & Developed by <span class="dev">StrangeInfinity</span>
     </div>
 
     <script>

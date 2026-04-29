@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QStackedLayout, QSizePolicy
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
+from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal
 from theme_manager import web_background_color
 from scheme_handler import InfinitySchemeHandler
@@ -24,6 +24,19 @@ class CustomWebView(QWebEngineView):
     def createWindow(self, windowType):
         return self.tab_manager.add_empty_tab().web_view
 
+    def keyPressEvent(self, event):
+        parent_window = self.tab_manager.parent_window
+        if parent_window and hasattr(parent_window, "_is_plain_key_event"):
+            if event.key() == Qt.Key.Key_F11 and parent_window._is_plain_key_event(event.modifiers()):
+                parent_window.toggle_browser_fullscreen()
+                event.accept()
+                return
+            if event.key() == Qt.Key.Key_Escape and getattr(parent_window, "_browser_fullscreen", False):
+                parent_window.toggle_browser_fullscreen()
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
 class BrowserTab(QWidget):
     titleChanged = pyqtSignal(str)
     urlChanged = pyqtSignal(QUrl)
@@ -41,12 +54,19 @@ class BrowserTab(QWidget):
         self.web_view = CustomWebView(self.tab_manager)
         self._page = QWebEnginePage(self.tab_manager.profile, self.web_view)
         self.web_view.setPage(self._page)
+        self._page.settings().setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
         self.apply_theme()
         self.layout.addWidget(self.web_view)
         
         # Handle print requests from within the page
         if self.tab_manager.parent_window and hasattr(self.tab_manager.parent_window, 'print_to_pdf'):
             self._page.printRequested.connect(self.tab_manager.parent_window.print_to_pdf)
+
+        # Let sites such as YouTube promote their video element to fullscreen.
+        if self.tab_manager.parent_window and hasattr(self.tab_manager.parent_window, 'handle_fullscreen_request'):
+            self._page.fullScreenRequested.connect(
+                lambda request, t=self: self.tab_manager.parent_window.handle_fullscreen_request(t, request)
+            )
         
         # Media Player
         from media_player import MediaPlayerWidget
@@ -144,7 +164,6 @@ class TabManager(QTabWidget):
         self.profile.installUrlSchemeHandler(b"infinity", self.scheme_handler)
 
         # Apply settings from settings_manager
-        from PyQt6.QtWebEngineCore import QWebEngineSettings
         ws = self.profile.settings()
         sm = parent.settings_manager if parent and hasattr(parent, 'settings_manager') else None
 
@@ -153,6 +172,7 @@ class TabManager(QTabWidget):
         ws.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, True)
         ws.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
         ws.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)
+        ws.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
 
         # User-controlled settings
         js_on      = sm.get("javascript_enabled") if sm else True
@@ -169,10 +189,18 @@ class TabManager(QTabWidget):
         if self.parent_window and hasattr(self.parent_window, 'settings_manager'):
             homepage = self.parent_window.settings_manager.get("homepage_url")
 
+        homepage = (homepage or "").strip()
+
         if homepage == "new_tab.html" or not homepage:
             return QUrl("infinity://newtab")
 
-        if not homepage.startswith("http"):
+        if homepage.startswith("file://"):
+            return QUrl(homepage)
+
+        if os.path.isabs(homepage) and os.path.exists(homepage):
+            return QUrl.fromLocalFile(homepage)
+
+        if not homepage.startswith(("http://", "https://")):
             homepage = "https://" + homepage
         return QUrl(homepage)
 

@@ -99,18 +99,23 @@ QCheckBox::indicator:checked {
 }
 QCheckBox::indicator:hover { border-color: {{accent}}; }
 QSlider::groove:horizontal {
-    height: 4px;
+    height: 8px;
     background: {{border_soft}};
-    border-radius: 2px;
+    border-radius: 4px;
 }
 QSlider::handle:horizontal {
     background: {{accent}};
-    width: 16px;
-    height: 16px;
-    margin: -6px 0;
-    border-radius: 8px;
+    border: 2px solid {{surface}};
+    width: 20px;
+    height: 20px;
+    margin: -8px 0;
+    border-radius: 11px;
 }
-QSlider::sub-page:horizontal { background: {{accent}}; border-radius: 2px; }
+QSlider::handle:horizontal:hover {
+    background: {{accent_alt}};
+}
+QSlider::sub-page:horizontal { background: {{accent}}; border-radius: 4px; }
+QSlider::add-page:horizontal { background: {{border_soft}}; border-radius: 4px; }
 QPushButton {
     background-color: {{border_soft}};
     color: {{text}};
@@ -220,13 +225,36 @@ class SettingsDialog(QDialog):
 
         # Startup
         grp = QGroupBox("Startup")
-        form = QFormLayout(grp)
+        startup_layout = QVBoxLayout(grp)
+        startup_layout.setSpacing(10)
+
+        form = QFormLayout()
         form.setSpacing(10)
         self.homepage_input = QLineEdit(self.settings.get("homepage_url"))
-        self.homepage_input.setPlaceholderText("e.g. https://google.com  (leave blank for new tab)")
+        self.homepage_input.setPlaceholderText("URL, file path, or leave blank for new tab")
         form.addRow("Homepage URL:", self.homepage_input)
+        startup_layout.addLayout(form)
+
+        homepage_actions = QHBoxLayout()
+        use_current_btn = QPushButton("Use Current Page")
+        use_current_btn.clicked.connect(self._use_current_page_as_homepage)
+        choose_file_btn = QPushButton("Choose Local Page…")
+        choose_file_btn.clicked.connect(self._choose_homepage_file)
+        use_new_tab_btn = QPushButton("Use New Tab")
+        use_new_tab_btn.clicked.connect(lambda: self.homepage_input.setText("new_tab.html"))
+        homepage_actions.addWidget(use_current_btn)
+        homepage_actions.addWidget(choose_file_btn)
+        homepage_actions.addWidget(use_new_tab_btn)
+        homepage_actions.addStretch()
+        startup_layout.addLayout(homepage_actions)
+
+        note = QLabel("Choose a web URL, a local HTML/PDF file, the current page, or the built-in new tab page.")
+        note.setObjectName("SectionDesc")
+        note.setWordWrap(True)
+        startup_layout.addWidget(note)
+
         self.restore_tabs_cb = _check("Restore previous tabs on startup", self.settings.get("restore_tabs"))
-        form.addRow("", self.restore_tabs_cb)
+        startup_layout.addWidget(self.restore_tabs_cb)
         lay.addWidget(grp)
 
         # Search engine
@@ -270,14 +298,34 @@ class SettingsDialog(QDialog):
 
         # Zoom
         zoom_row = QHBoxLayout()
+        zoom_row.setSpacing(10)
         self.zoom_slider = QSlider(Qt.Orientation.Horizontal)
         self.zoom_slider.setRange(25, 300)
+        self.zoom_slider.setSingleStep(5)
+        self.zoom_slider.setPageStep(25)
+        self.zoom_slider.setTickInterval(25)
+        self.zoom_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.zoom_slider.setValue(self.settings.get("default_zoom"))
-        self.zoom_label = QLabel(f"{self.settings.get('default_zoom')}%")
-        self.zoom_label.setFixedWidth(42)
-        self.zoom_slider.valueChanged.connect(lambda v: self.zoom_label.setText(f"{v}%"))
+        self.zoom_slider.setMinimumWidth(260)
+
+        self.zoom_spin = QSpinBox()
+        self.zoom_spin.setRange(25, 300)
+        self.zoom_spin.setSingleStep(5)
+        self.zoom_spin.setSuffix("%")
+        self.zoom_spin.setValue(self.settings.get("default_zoom"))
+        self.zoom_spin.setFixedWidth(88)
+
+        reset_zoom = QPushButton("100%")
+        reset_zoom.setToolTip("Reset zoom to 100%")
+        reset_zoom.setFixedWidth(64)
+
+        self.zoom_slider.valueChanged.connect(self.zoom_spin.setValue)
+        self.zoom_spin.valueChanged.connect(self.zoom_slider.setValue)
+        reset_zoom.clicked.connect(lambda: self.zoom_slider.setValue(100))
+
         zoom_row.addWidget(self.zoom_slider)
-        zoom_row.addWidget(self.zoom_label)
+        zoom_row.addWidget(self.zoom_spin)
+        zoom_row.addWidget(reset_zoom)
         form.addRow("Default Zoom:", zoom_row)
 
         # Browser chrome theme
@@ -414,6 +462,33 @@ class SettingsDialog(QDialog):
         return _scrollable(w)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
+    def _use_current_page_as_homepage(self):
+        try:
+            win = self.parent()
+            current_url = win.current_page_url() if hasattr(win, "current_page_url") else ""
+        except Exception:
+            current_url = ""
+
+        if current_url and current_url not in ("about:blank",):
+            self.homepage_input.setText(current_url)
+
+    def _choose_homepage_file(self):
+        file_filter = (
+            "Web Pages and Documents (*.html *.htm *.pdf);;"
+            "Web Pages (*.html *.htm);;"
+            "PDF Files (*.pdf);;"
+            "All Files (*)"
+        )
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Choose Homepage File",
+            os.path.expanduser("~"),
+            file_filter
+        )
+        if path:
+            from PyQt6.QtCore import QUrl
+            self.homepage_input.setText(QUrl.fromLocalFile(path).toString())
+
     def _browse_dl(self):
         p = QFileDialog.getExistingDirectory(self, "Select Download Directory", self.dl_path_input.text())
         if p:
@@ -460,7 +535,7 @@ class SettingsDialog(QDialog):
         # Appearance
         s.set("ui_theme",    self.theme_combo.currentData())
         s.set("font_size",    self.font_spin.value())
-        s.set("default_zoom", self.zoom_slider.value())
+        s.set("default_zoom", self.zoom_spin.value())
 
         # Privacy
         s.set("adblock_enabled",    self.adblock_cb.isChecked())

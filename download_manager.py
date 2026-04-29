@@ -5,8 +5,11 @@ import time
 import json
 import uuid
 from datetime import datetime
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QProgressBar, QWidget, QFileDialog, QScrollArea, QMessageBox)
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
+    QPushButton, QProgressBar, QWidget, QFileDialog, QScrollArea,
+    QMessageBox, QSizePolicy
+)
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest
 from theme_manager import render_template, theme_from_widget
@@ -29,8 +32,12 @@ class DownloadHistoryWidget(QWidget):
         info_layout = QHBoxLayout()
         self.name_label = QLabel(data.get("filename", "Unknown"))
         self.name_label.setStyleSheet(_t(self, "font-weight: bold; color: {{text}};"))
+        self.name_label.setWordWrap(True)
+        self.name_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.status_label = QLabel(f"{data.get('size_str', '')} • {data.get('date', '')}")
         self.status_label.setStyleSheet(_t(self, "color: {{text_soft}}; font-size: 12px;"))
+        self.status_label.setWordWrap(True)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         
         info_layout.addWidget(self.name_label)
         info_layout.addStretch()
@@ -38,17 +45,22 @@ class DownloadHistoryWidget(QWidget):
         
         self.layout.addLayout(info_layout)
         
-        btn_layout = QHBoxLayout()
-        self.redownload_btn = QPushButton("🔄 Redownload")
-        self.delete_btn = QPushButton("🗑️ Remove")
-        self.folder_btn = QPushButton("📁 Folder")
-        self.open_btn = QPushButton("📄 Open")
-        
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.redownload_btn)
-        btn_layout.addWidget(self.delete_btn)
-        btn_layout.addWidget(self.folder_btn)
-        btn_layout.addWidget(self.open_btn)
+        btn_layout = QGridLayout()
+        btn_layout.setHorizontalSpacing(8)
+        btn_layout.setVerticalSpacing(8)
+        self.redownload_btn = QPushButton("Redownload")
+        self.delete_btn = QPushButton("Remove")
+        self.folder_btn = QPushButton("Folder")
+        self.open_btn = QPushButton("Open")
+
+        for btn in (self.redownload_btn, self.delete_btn, self.folder_btn, self.open_btn):
+            btn.setMinimumWidth(96)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        btn_layout.addWidget(self.redownload_btn, 0, 0)
+        btn_layout.addWidget(self.delete_btn, 0, 1)
+        btn_layout.addWidget(self.folder_btn, 1, 0)
+        btn_layout.addWidget(self.open_btn, 1, 1)
         
         self.layout.addLayout(btn_layout)
         
@@ -60,7 +72,7 @@ class DownloadHistoryWidget(QWidget):
         
         self.setStyleSheet(_t(self, """
             QWidget { background-color: {{surface_alt}}; border-radius: 6px; }
-            QPushButton { background-color: {{border}}; color: {{text}}; border: none; padding: 4px 10px; border-radius: 3px; }
+            QPushButton { background-color: {{border}}; color: {{text}}; border: none; padding: 6px 10px; border-radius: 4px; }
             QPushButton:hover { background-color: {{accent}}; color: {{surface}}; }
         """))
 
@@ -116,8 +128,12 @@ class DownloadTaskWidget(QWidget):
         info_layout = QHBoxLayout()
         self.name_label = QLabel(self.filename)
         self.name_label.setStyleSheet(_t(self, "font-weight: bold; color: {{text}};"))
+        self.name_label.setWordWrap(True)
+        self.name_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.status_label = QLabel("Starting...")
         self.status_label.setStyleSheet(_t(self, "color: {{text_soft}}; font-size: 12px;"))
+        self.status_label.setWordWrap(True)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         info_layout.addWidget(self.name_label)
         info_layout.addStretch()
         info_layout.addWidget(self.status_label)
@@ -128,18 +144,23 @@ class DownloadTaskWidget(QWidget):
         self.progress.setFixedHeight(4)
         self.layout.addWidget(self.progress)
         
-        btn_layout = QHBoxLayout()
-        self.cancel_btn = QPushButton("✕ Cancel")
-        self.open_btn = QPushButton("📄 Open")
-        self.folder_btn = QPushButton("📁 Folder")
+        btn_layout = QGridLayout()
+        btn_layout.setHorizontalSpacing(8)
+        btn_layout.setVerticalSpacing(8)
+        self.cancel_btn = QPushButton("Cancel")
+        self.open_btn = QPushButton("Open")
+        self.folder_btn = QPushButton("Folder")
+
+        for btn in (self.cancel_btn, self.open_btn, self.folder_btn):
+            btn.setMinimumWidth(96)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         self.open_btn.hide()
         self.folder_btn.hide()
         
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.cancel_btn)
-        btn_layout.addWidget(self.folder_btn)
-        btn_layout.addWidget(self.open_btn)
+        btn_layout.addWidget(self.cancel_btn, 0, 0, 1, 2)
+        btn_layout.addWidget(self.folder_btn, 1, 0)
+        btn_layout.addWidget(self.open_btn, 1, 1)
         self.layout.addLayout(btn_layout)
         
         self.cancel_btn.clicked.connect(self.download_item.cancel)
@@ -152,7 +173,7 @@ class DownloadTaskWidget(QWidget):
         
         self.setStyleSheet(_t(self, """
             QWidget { background-color: {{surface_alt}}; border-radius: 6px; }
-            QPushButton { background-color: {{border}}; color: {{text}}; border: none; padding: 4px 10px; border-radius: 3px; }
+            QPushButton { background-color: {{border}}; color: {{text}}; border: none; padding: 6px 10px; border-radius: 4px; }
             QPushButton:hover { background-color: {{accent}}; color: {{surface}}; }
             QProgressBar { border: none; background-color: {{surface}}; }
             QProgressBar::chunk { background-color: {{accent}}; }
@@ -239,11 +260,21 @@ class DownloadsDialog(QDialog):
         super().__init__(parent)
         self.manager = manager
         self.setWindowTitle("Downloads Manager")
-        self.resize(600, 500)
+        self.resize(560, 520)
+        self.setMinimumSize(440, 420)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.setStyleSheet(_t(self, """
             QDialog { background-color: {{surface}}; color: {{text}}; }
             QScrollArea { border: none; background-color: transparent; }
+            QPushButton {
+                background-color: {{border_soft}};
+                color: {{text}};
+                border: none;
+                padding: 7px 12px;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: {{border}}; }
         """))
         
         layout = QVBoxLayout(self)

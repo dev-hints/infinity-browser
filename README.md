@@ -51,7 +51,7 @@ means it renders modern websites correctly and supports HTML5, CSS3, JavaScript,
 and native PDF viewing out of the box.
 
 Version: 1.0.0
-Developer: Ayush Kumar Maurya
+Developer: StrangeInfinity
 
 ---
 
@@ -65,6 +65,9 @@ Developer: Ayush Kumar Maurya
 - Configurable homepage URL
 - Back, Forward, Reload, and Home navigation buttons
 - Page load progress indicator
+- Browser fullscreen toggle via the toolbar, menu, or F11
+- Site video fullscreen support for players such as YouTube
+- Built-in QR generator for the current page, websites, and text
 
 ### Privacy and Security
 - Built-in ad blocker with a curated domain blocklist covering Google ads,
@@ -121,6 +124,7 @@ Developer: Ayush Kumar Maurya
 - Minimize, maximize/restore, and close controls
 - Double-click title bar to toggle maximize
 - Application-level keyboard shortcut handling (shortcuts work even when the web view has focus)
+- F11 browser fullscreen shortcut
 
 ### Settings
 - General: Homepage URL, startup behavior, search engine selection, toolbar options
@@ -164,7 +168,7 @@ the provided installer script. It handles Python dependencies, the application
 icon, and desktop integration in one step:
 
 ```bash
-git clone https://github.com/dev-hints/infinity-browser.git
+git clone https://github.com/StrangeInfinity/infinity-browser.git
 cd infinity-browser
 chmod +x install.sh
 ./install.sh
@@ -203,7 +207,7 @@ sudo dnf install -y python3 python3-pip git
 **Clone and install:**
 
 ```bash
-git clone https://github.com/dev-hints/infinity-browser.git
+git clone https://github.com/StrangeInfinity/infinity-browser.git
 cd infinity-browser
 chmod +x install.sh
 ./install.sh
@@ -236,7 +240,7 @@ instead of `python3`.
 **Clone and install:**
 
 ```bash
-git clone https://github.com/dev-hints/infinity-browser.git
+git clone https://github.com/StrangeInfinity/infinity-browser.git
 cd infinity-browser
 chmod +x install.sh
 ./install.sh
@@ -261,7 +265,7 @@ sudo pacman -Syu --noconfirm python python-pip git
 **Clone and install:**
 
 ```bash
-git clone https://github.com/dev-hints/infinity-browser.git
+git clone https://github.com/StrangeInfinity/infinity-browser.git
 cd infinity-browser
 chmod +x install.sh
 ./install.sh
@@ -283,7 +287,7 @@ sudo zypper install -y python3 python3-pip git
 **Clone and install:**
 
 ```bash
-git clone https://github.com/dev-hints/infinity-browser.git
+git clone https://github.com/StrangeInfinity/infinity-browser.git
 cd infinity-browser
 chmod +x install.sh
 ./install.sh
@@ -427,6 +431,7 @@ preserves page layout and images.
 | Ctrl+O         | Open a local file             |
 | Ctrl+P         | Print current page to PDF     |
 | Ctrl+Shift+N   | Open Notes panel              |
+| F11            | Toggle browser fullscreen     |
 
 ---
 
