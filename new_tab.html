@@ -77,40 +77,14 @@
         .logo {
             position: relative;
             display: inline-block;
-            font-size: clamp(8.5rem, 22vw, 15rem);
-            line-height: 0.82;
-            color: transparent;
-            background:
-                linear-gradient(
-                    100deg,
-                    var(--text-accent) 0%,
-                    var(--text-link) 18%,
-                    var(--text-main) 31%,
-                    color-mix(in srgb, var(--text-accent) 22%, white) 43%,
-                    var(--text-main) 55%,
-                    var(--text-link) 74%,
-                    var(--text-accent) 100%
-                );
-            background-size: 260% 100%;
-            background-position: 0% 50%;
-            -webkit-background-clip: text;
-            background-clip: text;
+            width: clamp(112px, 20vw, 176px);
+            height: clamp(112px, 20vw, 176px);
+            object-fit: contain;
             filter:
                 drop-shadow(0 0 5px color-mix(in srgb, var(--text-accent) 55%, transparent))
                 drop-shadow(0 0 16px color-mix(in srgb, var(--text-link) 34%, transparent));
-            text-shadow:
-                0 0 7px color-mix(in srgb, var(--card-bg) 75%, transparent),
-                0 0 18px color-mix(in srgb, var(--text-accent) 35%, transparent),
-                0 0 34px color-mix(in srgb, var(--text-link) 24%, transparent);
-            animation:
-                symbolFlow 4.8s linear infinite,
-                logoBreathe 4.8s ease-in-out infinite;
+            animation: logoBreathe 4.8s ease-in-out infinite;
             pointer-events: none;
-        }
-
-        @keyframes symbolFlow {
-            from { background-position: 0% 50%; }
-            to { background-position: 260% 50%; }
         }
 
         @keyframes logoBreathe {
@@ -162,7 +136,17 @@
 
         .search-icon {
             color: var(--text-muted);
-            font-size: 1.2rem;
+            width: 22px;
+            height: 22px;
+            flex: 0 0 auto;
+        }
+
+        .footer-mark {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            vertical-align: -3px;
+            margin-right: 4px;
         }
 
         .quick-links {
@@ -233,12 +217,15 @@
     <div class="stars"></div>
     <div class="container">
         <div class="logo-wrap" aria-hidden="true">
-            <div class="logo">∞</div>
+            <img class="logo" src="infinity://assets/infinity-browser.png" alt="">
         </div>
         <h1>INFINITY</h1>
         
         <form class="search-box" onsubmit="doSearch(event)">
-            <span class="search-icon">🔍</span>
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
             <input type="text" id="searchInput" class="search-input" placeholder="Search the web..." autofocus autocomplete="off">
         </form>
 
@@ -259,7 +246,10 @@
     </div>
 
     <div class="footer">
-        <span class="brand">∞ INFINITY BROWSER</span> • Designed & Developed by <span class="dev">StrangeInfinity</span>
+        <span class="brand">
+            <img class="footer-mark" src="infinity://assets/infinity-browser.png" alt="" aria-hidden="true">
+            INFINITY BROWSER
+        </span> • Designed & Developed by <span class="dev">StrangeInfinity</span>
     </div>
 
     <script>

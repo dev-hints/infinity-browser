@@ -4,10 +4,83 @@ from PyQt6.QtWidgets import (
     QStackedLayout, QSizePolicy
 )
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings
-from PyQt6.QtCore import Qt, QUrl, pyqtSignal
-from theme_manager import web_background_color
+from PyQt6.QtWebEngineCore import (
+    QWebEnginePage, QWebEngineProfile, QWebEngineScript, QWebEngineSettings
+)
+from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QSize
+from PyQt6.QtGui import QColor, QPalette
+from icon_utils import themed_icon
+from theme_manager import theme_from_widget, web_background_color, normalize_theme, tokens_for
 from scheme_handler import InfinitySchemeHandler
+
+
+def _disable_forced_web_dark_mode(settings):
+    attr = getattr(QWebEngineSettings.WebAttribute, "ForceDarkMode", None)
+    if attr is not None:
+        settings.setAttribute(attr, False)
+
+
+def _install_page_scheme_guard(profile, theme='light'):
+    script = QWebEngineScript()
+    script.setName("InfinityPageSchemeGuard")
+    script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentCreation)
+    script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
+    script.setRunsOnSubFrames(True)
+    theme_value = "light" if normalize_theme(theme) == "light" else "dark"
+    is_light = "true" if theme_value == "light" else "false"
+    script.setSourceCode(f"""
+(function () {{
+    if (!/^https?:$/.test(location.protocol)) return;
+
+    try {{
+        var nativeMatchMedia = window.matchMedia ? window.matchMedia.bind(window) : null;
+        if (nativeMatchMedia) {{
+            window.matchMedia = function (query) {{
+                var normalized = String(query || '').toLowerCase();
+                if (normalized.indexOf('prefers-color-scheme') !== -1) {{
+                    var isLight = {is_light};
+                    return {{
+                        media: query,
+                        matches: isLight,
+                        onchange: null,
+                        addListener: function () {{}},
+                        removeListener: function () {{}},
+                        addEventListener: function () {{}},
+                        removeEventListener: function () {{}},
+                        dispatchEvent: function () {{ return false; }}
+                    }};
+                }}
+                return nativeMatchMedia(query);
+            }};
+        }}
+    }} catch (e) {{}}
+
+    try {{
+        var style = document.createElement('style');
+        style.id = 'infinity-page-scheme';
+        style.textContent = ':root, html, body {{ color-scheme: {theme_value} !important; }}';
+        if (document.head) {{
+            document.head.appendChild(style);
+        }} else if (document.documentElement) {{
+            document.documentElement.appendChild(style);
+        }}
+    }} catch (e) {{}}
+
+    try {{
+        var meta = document.createElement('meta');
+        meta.name = 'color-scheme';
+        meta.content = '{theme_value}';
+        if (document.head) {{
+            document.head.appendChild(meta);
+        }} else if (document.documentElement) {{
+            document.documentElement.appendChild(meta);
+        }}
+    }} catch (e) {{}}
+}})();
+"""
+    )
+    profile.scripts().insert(script)
+
 
 class CustomTabBar(QTabBar):
     def __init__(self, parent=None):
@@ -20,6 +93,26 @@ class CustomWebView(QWebEngineView):
     def __init__(self, tab_manager, parent=None):
         super().__init__(parent)
         self.tab_manager = tab_manager
+        self.setObjectName("WebContentView")
+        self.setAutoFillBackground(True)
+
+    def _apply_theme(self, theme_name):
+        palette = self.palette()
+        tokens = tokens_for(theme_name)
+        bg = QColor(tokens["window_bg"])
+        text = QColor(tokens["text"])
+        for role in (
+            QPalette.ColorRole.Window,
+            QPalette.ColorRole.Base,
+            QPalette.ColorRole.AlternateBase,
+        ):
+            palette.setColor(role, bg)
+        for role in (
+            QPalette.ColorRole.WindowText,
+            QPalette.ColorRole.Text,
+        ):
+            palette.setColor(role, text)
+        self.setPalette(palette)
 
     def createWindow(self, windowType):
         return self.tab_manager.add_empty_tab().web_view
@@ -46,15 +139,23 @@ class BrowserTab(QWidget):
 
     def __init__(self, tab_manager, parent=None):
         super().__init__(parent)
+        self.setObjectName("WebPageHost")
+        self.setAutoFillBackground(True)
         self.tab_manager = tab_manager
+        theme = "dark"
+        if self.tab_manager.parent_window and hasattr(self.tab_manager.parent_window, "settings_manager"):
+            theme = self.tab_manager.parent_window.settings_manager.get("ui_theme", "dark")
+        self._apply_theme(normalize_theme(theme))
         self.layout = QStackedLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
+        self.is_media = False
         
         # Web View
         self.web_view = CustomWebView(self.tab_manager)
         self._page = QWebEnginePage(self.tab_manager.profile, self.web_view)
         self.web_view.setPage(self._page)
         self._page.settings().setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
+        _disable_forced_web_dark_mode(self._page.settings())
         self.apply_theme()
         self.layout.addWidget(self.web_view)
         
@@ -83,19 +184,49 @@ class BrowserTab(QWidget):
         # Connect Media Player Signals
         self.media_player.titleChanged.connect(self.titleChanged.emit)
         self.media_player.urlChanged.connect(self.urlChanged.emit)
-        
-        self.is_media = False
 
-    def apply_theme(self):
+    def _apply_theme(self, theme_name):
+        palette = self.palette()
+        tokens = tokens_for(theme_name)
+        bg = QColor(tokens["window_bg"])
+        text = QColor(tokens["text"])
+        for role in (
+            QPalette.ColorRole.Window,
+            QPalette.ColorRole.Base,
+            QPalette.ColorRole.AlternateBase,
+        ):
+            palette.setColor(role, bg)
+        for role in (
+            QPalette.ColorRole.WindowText,
+            QPalette.ColorRole.Text,
+        ):
+            palette.setColor(role, text)
+        self.setPalette(palette)
+        
+    def apply_theme(self, url=None):
+        url = url or self.url()
         theme = "dark"
         if self.tab_manager.parent_window and hasattr(self.tab_manager.parent_window, "settings_manager"):
             theme = self.tab_manager.parent_window.settings_manager.get("ui_theme", "dark")
-        color = web_background_color(theme)
+        theme = normalize_theme(theme)
+        tokens = tokens_for(theme)
+        color = QColor(tokens["window_bg"])
+
         try:
             self._page.setBackgroundColor(color)
         except Exception:
             pass
-        self.web_view.setStyleSheet(f"background-color: {color.name()};")
+
+        self.web_view._apply_theme(theme)
+        self.web_view.setStyleSheet(
+            f"QWebEngineView#WebContentView {{ background-color: {color.name()}; color: {tokens['text']}; }}"
+        )
+
+    def _background_color_for_url(self, url):
+        theme = "dark"
+        if self.tab_manager.parent_window and hasattr(self.tab_manager.parent_window, "settings_manager"):
+            theme = self.tab_manager.parent_window.settings_manager.get("ui_theme", "dark")
+        return web_background_color(theme)
 
     def load(self, url):
         url_str = url.toString().lower()
@@ -110,6 +241,8 @@ class BrowserTab(QWidget):
                 self.media_player.stop()
             self.is_media = False
             self.layout.setCurrentWidget(self.web_view)
+            self.apply_theme(url)
+            _disable_forced_web_dark_mode(self._page.settings())
             self.web_view.load(url)
 
     def url(self):
@@ -138,6 +271,7 @@ class BrowserTab(QWidget):
 class TabManager(QTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("BrowserTabs")
         self.parent_window = parent
         self.setTabBar(CustomTabBar(self))
         self.setDocumentMode(True)
@@ -145,9 +279,11 @@ class TabManager(QTabWidget):
         self.tabCloseRequested.connect(self.close_tab)
         
         # Corner widget for new tab
-        self.new_tab_btn = QPushButton("+", self)
+        self.new_tab_btn = QPushButton(self)
         self.new_tab_btn.setObjectName("NewTabButton")
         self.new_tab_btn.setFixedSize(40, 34)
+        self.new_tab_btn.setIcon(themed_icon("plus", theme_from_widget(self)))
+        self.new_tab_btn.setIconSize(QSize(18, 18))
         self.new_tab_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.new_tab_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.new_tab_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -158,6 +294,14 @@ class TabManager(QTabWidget):
 
         # Profile for settings, adblock, downloads
         self.profile = QWebEngineProfile("InfinityProfile", self)
+        self.profile.setHttpUserAgent(
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+        theme = "dark"
+        if self.parent_window and hasattr(self.parent_window, 'settings_manager'):
+            theme = self.parent_window.settings_manager.get("ui_theme", "dark")
+        _install_page_scheme_guard(self.profile, theme)
 
         # Register custom infinity:// scheme handler
         self.scheme_handler = InfinitySchemeHandler(self)
@@ -173,6 +317,7 @@ class TabManager(QTabWidget):
         ws.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, True)
         ws.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)
         ws.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
+        _disable_forced_web_dark_mode(ws)
 
         # User-controlled settings
         js_on      = sm.get("javascript_enabled") if sm else True
@@ -182,6 +327,9 @@ class TabManager(QTabWidget):
         ws.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, js_on)
         ws.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, not popup_on)
         ws.setFontSize(QWebEngineSettings.FontSize.DefaultFontSize, font_size)
+
+    def refresh_icons(self):
+        self.new_tab_btn.setIcon(themed_icon("plus", theme_from_widget(self)))
 
     def _get_home_url(self):
         """Return the configured home page as a QUrl."""
@@ -239,7 +387,17 @@ class TabManager(QTabWidget):
             if hasattr(tab, "web_view"):
                 tab.web_view.setZoomFactor(zoom)
 
+    def _update_page_scheme_guard(self):
+        to_remove = self.profile.scripts().find("InfinityPageSchemeGuard")
+        for script in to_remove:
+            self.profile.scripts().remove(script)
+        theme = "dark"
+        if self.parent_window and hasattr(self.parent_window, 'settings_manager'):
+            theme = self.parent_window.settings_manager.get("ui_theme", "dark")
+        _install_page_scheme_guard(self.profile, theme)
+
     def apply_theme_to_tabs(self, reload_internal_pages=False):
+        self._update_page_scheme_guard()
         for i in range(self.count()):
             tab = self.widget(i)
             if hasattr(tab, "apply_theme"):

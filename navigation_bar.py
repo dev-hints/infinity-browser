@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QPushButton, QSizePolicy
+from PyQt6.QtCore import Qt, QUrl, QSize
+from icon_utils import themed_icon
 from theme_manager import theme_from_widget, tokens_for
 
 class NavigationBar(QWidget):
@@ -11,68 +12,87 @@ class NavigationBar(QWidget):
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(5, 5, 5, 5)
         self.layout.setSpacing(5)
-        
+        self._icon_buttons = []
+
+        def make_nav_button(icon_name, tooltip=None, callback=None):
+            btn = QPushButton()
+            btn.setObjectName("NavButton")
+            btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            btn.setFixedWidth(38)
+            btn.setFixedHeight(34)
+            btn.setIcon(themed_icon(icon_name, theme_from_widget(self)))
+            btn.setIconSize(QSize(18, 18))
+            self._icon_buttons.append((btn, icon_name))
+            if tooltip:
+                btn.setToolTip(tooltip)
+            if callback:
+                btn.clicked.connect(callback)
+            return btn
+
         # Navigation Buttons
-        self.back_btn = QPushButton("◀")
-        self.back_btn.setObjectName("NavButton")
-        self.back_btn.clicked.connect(self.tab_manager.navigate_back)
+        self.back_btn = make_nav_button("back", "Back", self.tab_manager.navigate_back)
         self.layout.addWidget(self.back_btn)
         
-        self.forward_btn = QPushButton("▶")
-        self.forward_btn.setObjectName("NavButton")
-        self.forward_btn.clicked.connect(self.tab_manager.navigate_forward)
+        self.forward_btn = make_nav_button("forward", "Forward", self.tab_manager.navigate_forward)
         self.layout.addWidget(self.forward_btn)
         
-        self.reload_btn = QPushButton("↻")
-        self.reload_btn.setObjectName("NavButton")
-        self.reload_btn.clicked.connect(self.tab_manager.reload_page)
+        self.reload_btn = make_nav_button("reload", "Reload", self.tab_manager.reload_page)
         self.layout.addWidget(self.reload_btn)
         
-        self.home_btn = QPushButton("⌂")
-        self.home_btn.setObjectName("NavButton")
-        self.home_btn.clicked.connect(self.tab_manager.navigate_home)
+        self.home_btn = make_nav_button("home", "Home", self.tab_manager.navigate_home)
         self.layout.addWidget(self.home_btn)
         
         # URL Bar
         self.url_bar = QLineEdit()
         self.url_bar.setObjectName("UrlBar")
         self.url_bar.setPlaceholderText("Search or enter address")
+        self.url_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.url_bar.setMinimumWidth(220)
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         self.layout.addWidget(self.url_bar)
         
         # Bookmark Button
-        self.bookmark_btn = QPushButton("☆")
-        self.bookmark_btn.setObjectName("NavButton")
-        self.bookmark_btn.clicked.connect(self.toggle_bookmark)
+        self.bookmark_btn = make_nav_button("star", "Toggle Bookmark", self.toggle_bookmark)
         self.layout.addWidget(self.bookmark_btn)
 
         # YouTube Downloader Button
-        self.youtube_btn = QPushButton("YT↓")
-        self.youtube_btn.setObjectName("NavButton")
-        self.youtube_btn.setToolTip("YouTube Downloader")
-        self.youtube_btn.clicked.connect(lambda: self.window().show_youtube_downloader())
+        self.youtube_btn = make_nav_button("youtube", "YouTube Downloader",
+                                         lambda: self.window().show_youtube_downloader())
         self.youtube_btn.setEnabled(False)
         self.layout.addWidget(self.youtube_btn)
 
         # QR Generator Button
-        self.qr_btn = QPushButton("QR")
-        self.qr_btn.setObjectName("NavButton")
-        self.qr_btn.setToolTip("QR Generator")
-        self.qr_btn.clicked.connect(lambda: self.window().show_qr_generator())
+        self.qr_btn = make_nav_button("qr", "QR Generator",
+                                      lambda: self.window().show_qr_generator())
         self.layout.addWidget(self.qr_btn)
 
         # Browser Fullscreen Button
-        self.fullscreen_btn = QPushButton("⛶")
-        self.fullscreen_btn.setObjectName("NavButton")
-        self.fullscreen_btn.setToolTip("Toggle Browser Fullscreen (F11)")
-        self.fullscreen_btn.clicked.connect(lambda: self.window().toggle_browser_fullscreen())
+        self.fullscreen_btn = make_nav_button("fullscreen", "Toggle Browser Fullscreen (F11)",
+                                             lambda: self.window().toggle_browser_fullscreen())
         self.layout.addWidget(self.fullscreen_btn)
+
+        # Downloads Button
+        self.downloads_btn = make_nav_button("download", "Downloads",
+                                             lambda: self.window().download_manager.show_dialog())
+        self.layout.addWidget(self.downloads_btn)
+
+        # Notes Button
+        self.notes_btn = make_nav_button("notes", "Notes",
+                                        lambda: self.window().show_notes())
+        self.layout.addWidget(self.notes_btn)
         
         # Settings / Menu Button
-        self.menu_btn = QPushButton("⋮")
-        self.menu_btn.setObjectName("NavButton")
+        self.menu_btn = make_nav_button("menu", "Menu")
         # Menu will be attached later
         self.layout.addWidget(self.menu_btn)
+
+    def refresh_icons(self):
+        theme = theme_from_widget(self)
+        for btn, icon_name in self._icon_buttons:
+            if btn is self.bookmark_btn:
+                continue
+            btn.setIcon(themed_icon(icon_name, theme))
+        self._set_bookmark_state(bool(self.bookmark_btn.property("bookmarked")))
 
     def navigate_to_url(self):
         text = self.url_bar.text().strip()
@@ -135,7 +155,7 @@ class NavigationBar(QWidget):
 
         # Don't bookmark empty, new-tab, or internal pages
         if not url or qurl.scheme() in ("", "infinity") or url in ("about:blank",):
-            self._flash_bookmark_btn(self._theme_tokens()["danger"], "✕")  # red flash = can't bookmark
+            self._flash_bookmark_btn(self._theme_tokens()["danger"], "close")
             return
 
         title = current_view.title() or url
@@ -147,24 +167,27 @@ class NavigationBar(QWidget):
         else:
             manager.add_bookmark(url, title)
             self._set_bookmark_state(True)
-            self._flash_bookmark_btn(self._theme_tokens()["bookmark"], "★")
+            self._flash_bookmark_btn(self._theme_tokens()["bookmark"], "star-filled")
 
     def _theme_tokens(self):
         return tokens_for(theme_from_widget(self))
 
     def _set_bookmark_state(self, bookmarked):
-        self.bookmark_btn.setText("★" if bookmarked else "☆")
+        theme = theme_from_widget(self)
+        role = "bookmark" if bookmarked else "text_soft"
+        self.bookmark_btn.setIcon(themed_icon("star-filled" if bookmarked else "star", theme, role))
         self.bookmark_btn.setProperty("bookmarked", bool(bookmarked))
         self.bookmark_btn.style().unpolish(self.bookmark_btn)
         self.bookmark_btn.style().polish(self.bookmark_btn)
 
-    def _flash_bookmark_btn(self, color, symbol):
+    def _flash_bookmark_btn(self, color, icon_name):
         """Brief color flash to give visual feedback."""
         from PyQt6.QtCore import QTimer
+        from icon_utils import svg_icon
         self.bookmark_btn.setStyleSheet(
             f"color: {color}; background-color: rgba(255,255,255,0.1); border-radius: 4px;"
         )
-        self.bookmark_btn.setText(symbol)
+        self.bookmark_btn.setIcon(svg_icon(icon_name, color))
         def restore():
             url = ""
             current_view = self.tab_manager.currentWidget()

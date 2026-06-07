@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QSpinBox, QFrame, QScrollArea, QSizePolicy, QApplication
 )
 from PyQt6.QtCore import Qt
+from icon_utils import themed_icon
 from theme_manager import apply_theme, render_template
 
 STYLE = """
@@ -180,7 +181,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.settings = settings_manager
         self.current_theme = self.settings.get("ui_theme", "dark")
-        self.setWindowTitle("Infinity — Settings")
+        self.setWindowTitle("Infinity Settings")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(620, 580)
         self.setStyleSheet(render_template(STYLE, self.current_theme))
@@ -190,18 +191,18 @@ class SettingsDialog(QDialog):
         root.setSpacing(12)
 
         # Header
-        hdr = QLabel("⚙  Settings")
+        hdr = QLabel("Settings")
         hdr.setStyleSheet(render_template("font-size: 20px; font-weight: bold; color: {{text}}; padding-bottom: 4px;", self.current_theme))
         root.addWidget(hdr)
         root.addWidget(_sep())
 
         # Tabs
         tabs = QTabWidget()
-        tabs.addTab(self._general_tab(),   "🌐  General")
-        tabs.addTab(self._appearance_tab(),"🎨  Appearance")
-        tabs.addTab(self._privacy_tab(),   "🔒  Privacy")
-        tabs.addTab(self._security_tab(),  "🛡  Security")
-        tabs.addTab(self._downloads_tab(), "⬇  Downloads")
+        tabs.addTab(self._general_tab(),   themed_icon("globe", self.current_theme), "General")
+        tabs.addTab(self._appearance_tab(), themed_icon("palette", self.current_theme, "accent"), "Appearance")
+        tabs.addTab(self._privacy_tab(),   themed_icon("lock", self.current_theme), "Privacy")
+        tabs.addTab(self._security_tab(),  themed_icon("shield", self.current_theme), "Security")
+        tabs.addTab(self._downloads_tab(), themed_icon("download", self.current_theme), "Downloads")
         root.addWidget(tabs)
 
         # Save / Cancel
@@ -238,7 +239,7 @@ class SettingsDialog(QDialog):
         homepage_actions = QHBoxLayout()
         use_current_btn = QPushButton("Use Current Page")
         use_current_btn.clicked.connect(self._use_current_page_as_homepage)
-        choose_file_btn = QPushButton("Choose Local Page…")
+        choose_file_btn = QPushButton("Choose Local Page...")
         choose_file_btn.clicked.connect(self._choose_homepage_file)
         use_new_tab_btn = QPushButton("Use New Tab")
         use_new_tab_btn.clicked.connect(lambda: self.homepage_input.setText("new_tab.html"))
@@ -337,6 +338,17 @@ class SettingsDialog(QDialog):
         form.addRow("Browser Theme:", self.theme_combo)
 
         lay.addWidget(grp)
+
+        chrome_grp = QGroupBox("Window")
+        chrome_form = QFormLayout(chrome_grp)
+        chrome_form.setSpacing(10)
+        self.system_title_bar_cb = _check(
+            "Use system title bar and border",
+            self.settings.get("use_system_title_bar")
+        )
+        chrome_form.addRow("", self.system_title_bar_cb)
+        lay.addWidget(chrome_grp)
+
         lay.addStretch()
         return _scrollable(w)
 
@@ -367,11 +379,13 @@ class SettingsDialog(QDialog):
         vlay.addWidget(note)
 
         btn_row1 = QHBoxLayout()
-        clear_hist = QPushButton("🕐  Clear History")
+        clear_hist = QPushButton("Clear History")
         clear_hist.setObjectName("DangerBtn")
+        clear_hist.setIcon(themed_icon("reload", self.current_theme, "danger"))
         clear_hist.clicked.connect(self._clear_history)
-        clear_cache = QPushButton("🗑  Clear Cache")
+        clear_cache = QPushButton("Clear Cache")
         clear_cache.setObjectName("DangerBtn")
+        clear_cache.setIcon(themed_icon("trash", self.current_theme, "danger"))
         clear_cache.clicked.connect(self._clear_cache)
         btn_row1.addWidget(clear_hist)
         btn_row1.addWidget(clear_cache)
@@ -379,11 +393,13 @@ class SettingsDialog(QDialog):
         vlay.addLayout(btn_row1)
 
         btn_row2 = QHBoxLayout()
-        clear_cookies = QPushButton("🍪  Clear Cookies")
+        clear_cookies = QPushButton("Clear Cookies")
         clear_cookies.setObjectName("DangerBtn")
+        clear_cookies.setIcon(themed_icon("trash", self.current_theme, "danger"))
         clear_cookies.clicked.connect(self._clear_cookies)
-        clear_all = QPushButton("⚠  Clear All Data")
+        clear_all = QPushButton("Clear All Data")
         clear_all.setObjectName("DangerBtn")
+        clear_all.setIcon(themed_icon("close", self.current_theme, "danger"))
         clear_all.clicked.connect(self._clear_all)
         btn_row2.addWidget(clear_cookies)
         btn_row2.addWidget(clear_all)
@@ -416,7 +432,7 @@ class SettingsDialog(QDialog):
         form.addRow("", self.safe_cb)
 
         note = QLabel(
-            "ℹ  HTTPS-Only mode will show a warning when visiting insecure (http://) sites.\n"
+            "HTTPS-Only mode will show a warning when visiting insecure (http://) sites.\n"
             "   Safe Browsing helps protect against known malicious websites."
         )
         note.setObjectName("SectionDesc")
@@ -451,7 +467,7 @@ class SettingsDialog(QDialog):
 
         dl_row = QHBoxLayout()
         self.dl_path_input = QLineEdit(self.settings.get("download_dir"))
-        browse_btn = QPushButton("Browse…")
+        browse_btn = QPushButton("Browse...")
         browse_btn.clicked.connect(self._browse_dl)
         dl_row.addWidget(self.dl_path_input)
         dl_row.addWidget(browse_btn)
@@ -536,6 +552,7 @@ class SettingsDialog(QDialog):
         s.set("ui_theme",    self.theme_combo.currentData())
         s.set("font_size",    self.font_spin.value())
         s.set("default_zoom", self.zoom_spin.value())
+        s.set("use_system_title_bar", self.system_title_bar_cb.isChecked())
 
         # Privacy
         s.set("adblock_enabled",    self.adblock_cb.isChecked())
@@ -567,6 +584,9 @@ class SettingsDialog(QDialog):
                             self.settings.get("javascript_enabled"))
             ws.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows,
                             not self.settings.get("block_popups"))
+            force_dark_attr = getattr(QWebEngineSettings.WebAttribute, "ForceDarkMode", None)
+            if force_dark_attr is not None:
+                ws.setAttribute(force_dark_attr, False)
 
             # Font size
             ws.setFontSize(QWebEngineSettings.FontSize.DefaultFontSize,
@@ -576,10 +596,20 @@ class SettingsDialog(QDialog):
             nav = win.nav_bar
             nav.home_btn.setVisible(self.settings.get("show_home_btn"))
 
+            # Switch between native system chrome and the custom title bar.
+            if hasattr(win, "apply_window_chrome"):
+                win.apply_window_chrome(self.settings.get("use_system_title_bar"))
+
             # Apply UI theme globally at runtime
             app = QApplication.instance()
             if app:
                 apply_theme(app, self.settings.get("ui_theme", "dark"))
+                try:
+                    app.styleHints().setColorScheme(Qt.ColorScheme.Light)
+                except Exception:
+                    pass
+            if hasattr(win, "refresh_window_icons"):
+                win.refresh_window_icons()
             if hasattr(win.tab_manager, "apply_theme_to_tabs"):
                 win.tab_manager.apply_theme_to_tabs(reload_internal_pages=True)
 
@@ -587,6 +617,10 @@ class SettingsDialog(QDialog):
             zoom = self.settings.get("default_zoom") / 100.0
             for i in range(win.tab_manager.count()):
                 tab = win.tab_manager.widget(i)
+                if hasattr(tab, "page"):
+                    force_dark_attr = getattr(QWebEngineSettings.WebAttribute, "ForceDarkMode", None)
+                    if force_dark_attr is not None:
+                        tab.page().settings().setAttribute(force_dark_attr, False)
                 if hasattr(tab, 'web_view'):
                     tab.web_view.setZoomFactor(zoom)
 

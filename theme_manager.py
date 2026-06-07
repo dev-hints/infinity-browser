@@ -118,9 +118,11 @@ def apply_theme(app, theme_name: str | None) -> str:
     theme = normalize_theme(theme_name)
     tokens = tokens_for(theme)
 
-    # Use Fusion so controls look deterministic and not inherited from desktop theme.
+    # Keep Qt's global palette light so QWebEngine reports the same page
+    # environment in dark chrome mode as it does in light chrome mode. The
+    # browser chrome itself is themed by the scoped stylesheet rules.
     app.setStyle("Fusion")
-    app.setPalette(build_palette(theme))
+    app.setPalette(build_palette("light"))
     app.setFont(QFont(tokens["font_ui"], 10))
     app.setStyleSheet(load_app_stylesheet(theme))
     return theme

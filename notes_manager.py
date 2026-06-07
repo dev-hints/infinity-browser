@@ -8,8 +8,9 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QFrame, QApplication, QInputDialog,
     QMessageBox, QSizePolicy, QToolButton, QMenu
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QFont, QKeySequence, QShortcut, QAction
+from icon_utils import themed_icon
 from theme_manager import render_template, theme_from_widget
 
 NOTES_FILE = os.path.join(os.path.dirname(__file__), 'notes.json')
@@ -30,8 +31,11 @@ class NotesManager:
         return []
 
     def _save(self):
-        with open(NOTES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.notes, f, indent=2, ensure_ascii=False)
+        try:
+            with open(NOTES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self.notes, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error saving notes: {e}")
 
     def _now(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -81,6 +85,7 @@ NOTES_STYLE = """
 QDialog, QWidget {
     background-color: {{surface}};
     color: {{text}};
+    font-family: '{{font_ui}}', 'Segoe UI', 'Helvetica Neue', sans-serif;
 }
 /* Sidebar */
 QListWidget {
@@ -88,18 +93,19 @@ QListWidget {
     border: none;
     border-right: 1px solid {{border_soft}};
     outline: none;
-    padding: 4px;
+    padding: 8px;
 }
 QListWidget::item {
-    padding: 10px 12px;
-    border-radius: 8px;
-    margin: 2px 4px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin: 4px 6px;
     color: {{text_soft}};
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 500;
 }
 QListWidget::item:selected {
-    background-color: {{selection}};
-    color: #ffffff;
+    background-color: {{accent}};
+    color: {{surface}};
 }
 QListWidget::item:hover:!selected {
     background-color: {{surface_alt}};
@@ -110,11 +116,14 @@ QTextEdit {
     background-color: {{surface}};
     color: {{text}};
     border: none;
-    font-size: 14px;
-    font-family: '{{font_mono}}', 'Fira Code', 'Consolas', monospace;
-    padding: 16px;
+    font-size: 15px;
+    font-family: '{{font_mono}}', 'JetBrains Mono', 'Fira Code', monospace;
+    padding: 20px;
     selection-background-color: {{selection}};
-    line-height: 1.6;
+    line-height: 1.7;
+}
+QTextEdit::placeholder {
+    color: {{text_muted}};
 }
 /* Title edit */
 QLineEdit {
@@ -122,20 +131,27 @@ QLineEdit {
     color: {{text}};
     border: none;
     border-bottom: 2px solid {{border_soft}};
-    font-size: 18px;
-    font-weight: bold;
-    padding: 6px 2px;
+    font-size: 20px;
+    font-weight: 600;
+    padding: 8px 4px;
 }
 QLineEdit:focus { border-bottom-color: {{accent}}; }
+QLineEdit::placeholder {
+    color: {{text_muted}};
+    font-weight: 400;
+}
+#SearchBox::placeholder {
+    color: {{text_muted}};
+}
 /* Buttons */
 QPushButton, QToolButton {
     background-color: {{surface_alt}};
     color: {{text_soft}};
     border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: bold;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
 }
 QPushButton:hover, QToolButton:hover {
     background-color: {{border_soft}};
@@ -144,7 +160,9 @@ QPushButton:hover, QToolButton:hover {
 QPushButton#NewBtn {
     background-color: {{accent}};
     color: {{surface}};
-    padding: 7px 18px;
+    border-radius: 21px;
+    font-size: 30px;
+    font-weight: bold;
 }
 QPushButton#NewBtn:hover { background-color: {{accent_alt}}; }
 QPushButton#DelBtn { color: {{danger}}; background-color: {{danger_soft}}; }
@@ -152,20 +170,21 @@ QPushButton#DelBtn:hover { background-color: {{danger}}; color: {{surface}}; }
 /* Labels */
 QLabel#Meta {
     color: {{text_muted}};
-    font-size: 11px;
-    padding: 0 2px;
+    font-size: 12px;
+    padding: 0 4px;
 }
 QLabel#SideTitle {
     color: {{accent}};
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1px;
-    padding: 8px 12px 4px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 16px 6px 16px;
 }
 QLabel#WordCount {
-    color: {{border}};
-    font-size: 11px;
-    padding: 2px 8px;
+    color: {{text_muted}};
+    font-size: 12px;
+    padding: 4px 10px;
 }
 QFrame#VSep { background-color: {{border_soft}}; max-width: 1px; }
 QFrame#HSep { background-color: {{border_soft}}; max-height: 1px; }
@@ -182,7 +201,7 @@ class NotesDialog(QDialog):
         self._auto_save_timer.setSingleShot(True)
         self._auto_save_timer.timeout.connect(self._auto_save)
 
-        self.setWindowTitle("📝  Notes")
+        self.setWindowTitle("Notes")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(900, 600)
         self.theme = theme_from_widget(self)
@@ -198,7 +217,7 @@ class NotesDialog(QDialog):
         # ── Left sidebar ──────────────────────────────────────────────────────
         sidebar = QWidget()
         sidebar.setStyleSheet(render_template("background-color: {{surface_soft}};", self.theme))
-        sidebar.setFixedWidth(230)
+        sidebar.setFixedWidth(260)
         sidebar_lay = QVBoxLayout(sidebar)
         sidebar_lay.setContentsMargins(0, 0, 0, 0)
         sidebar_lay.setSpacing(0)
@@ -211,10 +230,12 @@ class NotesDialog(QDialog):
         hdr_title = QLabel("NOTES")
         hdr_title.setObjectName("SideTitle")
         hdr_title.setStyleSheet(render_template("color: {{accent}}; font-size: 11px; font-weight: bold; letter-spacing: 1.5px;", self.theme))
-        new_btn = QPushButton("＋")
+        new_btn = QPushButton()
         new_btn.setObjectName("NewBtn")
-        new_btn.setFixedSize(28, 28)
-        new_btn.setToolTip("New Note (Ctrl+N)")
+        new_btn.setFixedSize(42, 42)
+        new_btn.setIcon(themed_icon("plus", self.theme))
+        new_btn.setIconSize(QSize(20, 20))
+        new_btn.setToolTip("Create New Note (Ctrl+N)")
         new_btn.clicked.connect(self._new_note)
         hdr_lay.addWidget(hdr_title)
         hdr_lay.addStretch()
@@ -223,12 +244,13 @@ class NotesDialog(QDialog):
 
         # Search
         self.search_box = QLineEdit()
-        self.search_box.setPlaceholderText("🔍  Search notes…")
+        self.search_box.setObjectName("SearchBox")
+        self.search_box.setPlaceholderText("Search notes...")
         self.search_box.setStyleSheet(render_template(
             "background-color: {{surface_alt}}; color: {{text}}; border: none;"
             "border-bottom: 1px solid {{border_soft}}; padding: 8px 12px; font-size: 12px;",
             self.theme,
-        ))
+        ) + f" QLineEdit::placeholder {{ color: {render_template('{{text_muted}}', self.theme)}; }}")
         self.search_box.textChanged.connect(self._filter_list)
         sidebar_lay.addWidget(self.search_box)
 
@@ -258,11 +280,17 @@ class NotesDialog(QDialog):
         tb_lay.setContentsMargins(14, 8, 14, 8)
         tb_lay.setSpacing(6)
 
-        self.rename_btn = QPushButton("✏  Rename")
+        self.rename_btn = QPushButton("Rename")
+        self.rename_btn.setIcon(themed_icon("edit", self.theme))
         self.rename_btn.clicked.connect(self._rename)
-        self.copy_btn   = QPushButton("📋  Copy")
+        self.copy_btn   = QPushButton("Copy")
+        self.copy_btn.setIcon(themed_icon("copy", self.theme))
         self.copy_btn.clicked.connect(self._copy)
-        self.del_btn    = QPushButton("🗑  Delete")
+        self.export_btn = QPushButton("Export")
+        self.export_btn.setIcon(themed_icon("save", self.theme))
+        self.export_btn.clicked.connect(self._export)
+        self.del_btn    = QPushButton("Delete")
+        self.del_btn.setIcon(themed_icon("trash", self.theme, "danger"))
         self.del_btn.setObjectName("DelBtn")
         self.del_btn.clicked.connect(self._delete)
         self.word_count_lbl = QLabel()
@@ -270,6 +298,7 @@ class NotesDialog(QDialog):
 
         tb_lay.addWidget(self.rename_btn)
         tb_lay.addWidget(self.copy_btn)
+        tb_lay.addWidget(self.export_btn)
         tb_lay.addWidget(self.del_btn)
         tb_lay.addStretch()
         tb_lay.addWidget(self.word_count_lbl)
@@ -310,7 +339,7 @@ class NotesDialog(QDialog):
         editor_lay.addWidget(status)
 
         splitter.addWidget(editor_panel)
-        splitter.setSizes([230, 670])
+        splitter.setSizes([260, 640])
         root.addWidget(splitter)
 
         # Shortcuts
@@ -410,6 +439,28 @@ class NotesDialog(QDialog):
         QApplication.clipboard().setText(note['content'])
         self.status_lbl.setText("✓ Note content copied to clipboard")
         QTimer.singleShot(2000, lambda: self.status_lbl.setText(f"Editing: {note['title']}"))
+
+    def _export(self):
+        if not self.current_id:
+            return
+        note = self.manager.get_by_id(self.current_id)
+        if not note:
+            return
+        from PyQt6.QtWidgets import QFileDialog
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Export Note", f"{note['title']}.txt", "Text Files (*.txt)"
+        )
+        if filepath:
+            try:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(f"Title: {note['title']}\n")
+                    f.write(f"Created: {note['created']}\n")
+                    f.write(f"Modified: {note['modified']}\n\n")
+                    f.write(note['content'])
+                self.status_lbl.setText("✓ Note exported to file")
+                QTimer.singleShot(2000, lambda: self.status_lbl.setText(f"Editing: {note['title']}"))
+            except Exception as e:
+                QMessageBox.warning(self, "Export Failed", f"Could not export note: {e}")
 
     def _delete(self):
         if not self.current_id:

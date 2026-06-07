@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                               QListWidgetItem, QApplication, QWidget,
                               QFormLayout, QFrame, QScrollArea)
 from PyQt6.QtCore import Qt
+from icon_utils import themed_icon
 from theme_manager import render_template, theme_from_widget
 
 PASSWORDS_FILE = os.path.join(os.path.dirname(__file__), 'passwords.json')
@@ -128,7 +129,7 @@ class PasswordManagerDialog(QDialog):
     def __init__(self, manager: PasswordManager, parent=None):
         super().__init__(parent)
         self.manager = manager
-        self.setWindowTitle("🔐  Password Vault")
+        self.setWindowTitle("Password Vault")
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.resize(560, 500)
         theme = theme_from_widget(self)
@@ -169,7 +170,7 @@ class PasswordManagerDialog(QDialog):
         root.setSpacing(14)
 
         # Header
-        title = QLabel("🔐  Password Vault")
+        title = QLabel("Password Vault")
         title.setObjectName("Title")
         root.addWidget(title)
         sub = QLabel("Passwords are encrypted with PBKDF2-HMAC-SHA256 and stored only on this device.")
@@ -215,12 +216,15 @@ class PasswordManagerDialog(QDialog):
 
         # Action buttons
         btn_row = QHBoxLayout()
-        copy_user_btn = QPushButton("📋  Copy Username")
+        copy_user_btn = QPushButton("Copy Username")
+        copy_user_btn.setIcon(themed_icon("copy", theme))
         copy_user_btn.clicked.connect(lambda: self._copy('user'))
-        copy_pass_btn = QPushButton("🔑  Copy Password")
+        copy_pass_btn = QPushButton("Copy Password")
+        copy_pass_btn.setIcon(themed_icon("key", theme))
         copy_pass_btn.clicked.connect(lambda: self._copy('pass'))
-        del_btn = QPushButton("🗑  Delete")
+        del_btn = QPushButton("Delete")
         del_btn.setObjectName("DelBtn")
+        del_btn.setIcon(themed_icon("trash", theme, "danger"))
         del_btn.clicked.connect(self._delete)
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
@@ -246,7 +250,8 @@ class PasswordManagerDialog(QDialog):
     def _refresh_list(self):
         self.list_widget.clear()
         for site, username in self.manager.get_all():
-            item = QListWidgetItem(f"  🔒  {site}   —   {username}")
+            item = QListWidgetItem(f"  {site}   -   {username}")
+            item.setIcon(themed_icon("lock", theme_from_widget(self)))
             item.setData(Qt.ItemDataRole.UserRole, (site, username))
             self.list_widget.addItem(item)
 

@@ -51,5 +51,27 @@ class InfinitySchemeHandler(QWebEngineUrlSchemeHandler):
             buf.setData(QByteArray(data))
             buf.open(QBuffer.OpenModeFlag.ReadOnly)
             job.reply(b"text/html", buf)
+        elif host == "assets":
+            filename = os.path.basename(url.path())
+            allowed_assets = {
+                "infinity-browser.png": ("icons/infinity-browser.png", b"image/png"),
+            }
+            asset = allowed_assets.get(filename)
+            if not asset:
+                job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
+                return
+
+            asset_path = os.path.join(self._base_dir, asset[0])
+            try:
+                with open(asset_path, "rb") as f:
+                    data = f.read()
+            except FileNotFoundError:
+                job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)
+                return
+
+            buf = QBuffer(parent=self)
+            buf.setData(QByteArray(data))
+            buf.open(QBuffer.OpenModeFlag.ReadOnly)
+            job.reply(asset[1], buf)
         else:
             job.fail(QWebEngineUrlRequestJob.Error.UrlNotFound)

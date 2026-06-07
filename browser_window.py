@@ -6,8 +6,9 @@ from PyQt6.QtWidgets import (
     QTabWidget, QScrollArea, QApplication
 )
 from PyQt6.QtGui import QAction, QFont, QKeySequence, QShortcut
-from PyQt6.QtCore import Qt, QPoint, QTimer, QUrl, QEvent
+from PyQt6.QtCore import Qt, QPoint, QTimer, QUrl, QEvent, QSize
 
+from icon_utils import themed_icon
 from navigation_bar import NavigationBar
 from tab_manager import TabManager
 from settings_manager import SettingsManager
@@ -87,8 +88,8 @@ class AboutDialog(QDialog):
         banner_lay.setContentsMargins(28, 22, 28, 22)
         banner_lay.setSpacing(20)
 
-        logo = QLabel("∞")
-        logo.setStyleSheet(render_template("font-size: 72px; color: {{accent}};", self.theme))
+        logo = QLabel()
+        logo.setPixmap(themed_icon("app", self.theme, "accent", 72).pixmap(72, 72))
         logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         banner_lay.addWidget(logo)
 
@@ -354,30 +355,48 @@ class TitleBar(QWidget):
         self.layout.setSpacing(0)
         
         # Title Label
-        self.title_label = QLabel(" Infinity")
+        self.app_icon = QLabel()
+        self.app_icon.setObjectName("TitleAppIcon")
+        self.app_icon.setPixmap(themed_icon("app", theme_from_widget(self), "accent").pixmap(18, 18))
+        self.layout.addWidget(self.app_icon)
+
+        self.title_label = QLabel("Infinity")
         self.title_label.setObjectName("TitleLabel")
         self.layout.addWidget(self.title_label)
         
         self.layout.addStretch()
         
         # Window Controls
-        self.min_btn = QPushButton("—")
+        self.min_btn = QPushButton()
         self.min_btn.setObjectName("TitleButton")
+        self.min_btn.setIcon(themed_icon("minus", theme_from_widget(self)))
+        self.min_btn.setIconSize(QSize(14, 14))
         self.min_btn.clicked.connect(self.parent.showMinimized)
         self.layout.addWidget(self.min_btn)
         
-        self.max_btn = QPushButton("□")
+        self.max_btn = QPushButton()
         self.max_btn.setObjectName("TitleButton")
+        self.max_btn.setIcon(themed_icon("maximize", theme_from_widget(self)))
+        self.max_btn.setIconSize(QSize(14, 14))
         self.max_btn.clicked.connect(self.toggle_max_restore)
         self.layout.addWidget(self.max_btn)
         
-        self.close_btn = QPushButton("✕")
+        self.close_btn = QPushButton()
         self.close_btn.setObjectName("TitleButton")
+        self.close_btn.setIcon(themed_icon("close", theme_from_widget(self)))
+        self.close_btn.setIconSize(QSize(14, 14))
         self.close_btn.setProperty("class", "CloseButton")
         self.close_btn.clicked.connect(self.parent.close)
         self.layout.addWidget(self.close_btn)
         
         self.drag_pos = None
+
+    def refresh_icons(self):
+        theme = theme_from_widget(self)
+        self.app_icon.setPixmap(themed_icon("app", theme, "accent").pixmap(18, 18))
+        self.min_btn.setIcon(themed_icon("minus", theme))
+        self.max_btn.setIcon(themed_icon("maximize", theme))
+        self.close_btn.setIcon(themed_icon("close", theme))
 
     def toggle_max_restore(self):
         if self.parent.isMaximized():
@@ -399,10 +418,17 @@ class TitleBar(QWidget):
 class BrowserWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("Infinity")
+        self.settings_manager = SettingsManager()
+        self._use_system_title_bar = bool(self.settings_manager.get("use_system_title_bar"))
         
-        # Setup frameless window
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # Setup window chrome
+        if self._use_system_title_bar:
+            self.setWindowFlags(Qt.WindowType.Window)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+        else:
+            self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.resize(1200, 800)
         self._browser_fullscreen = False
         self._web_fullscreen_tab = None
@@ -414,10 +440,10 @@ class BrowserWindow(QMainWindow):
         # Main central widget with rounded corners background
         self.central_widget = QWidget()
         self.central_widget.setObjectName("CentralWidget")
+        self.central_widget.setProperty("systemChrome", self._use_system_title_bar)
         self.setCentralWidget(self.central_widget)
         
         # Initialize Managers
-        self.settings_manager  = SettingsManager()
         self.history_manager   = HistoryManager()
         self.bookmark_manager  = BookmarkManager()
         self.password_manager  = PasswordManager()
@@ -425,12 +451,13 @@ class BrowserWindow(QMainWindow):
         
         # Main layout
         self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(1, 1, 1, 1) # Space for border
+        self.main_layout.setContentsMargins(*self._normal_layout_margins())
         self.main_layout.setSpacing(0)
         
         # Title Bar
         self.title_bar = TitleBar(self)
         self.main_layout.addWidget(self.title_bar)
+        self.title_bar.setVisible(not self._use_system_title_bar)
         
         # Tab Manager (Initializes WebEngine View logic)
         self.tab_manager = TabManager(self)
@@ -470,6 +497,64 @@ class BrowserWindow(QMainWindow):
         # Install app-level event filter to catch shortcuts even when
         # QWebEngineView has focus (it swallows events in its own process)
         QApplication.instance().installEventFilter(self)
+
+    def _normal_layout_margins(self):
+        return (0, 0, 0, 0) if self._use_system_title_bar else (1, 1, 1, 1)
+
+    def _refresh_central_chrome_style(self):
+        if not hasattr(self, "central_widget"):
+            return
+        self.central_widget.setProperty("systemChrome", self._use_system_title_bar)
+        style = self.central_widget.style()
+        style.unpolish(self.central_widget)
+        style.polish(self.central_widget)
+        self.central_widget.update()
+
+    def apply_window_chrome(self, use_system_title_bar=None):
+        """Switch between native system chrome and the custom frameless chrome."""
+        use_system = bool(use_system_title_bar)
+        if use_system == self._use_system_title_bar:
+            self._refresh_central_chrome_style()
+            return
+
+        was_visible = self.isVisible()
+        geometry = self.geometry()
+        state = self.windowState()
+
+        self._use_system_title_bar = use_system
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, not use_system)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, not use_system)
+        self._refresh_central_chrome_style()
+
+        in_fullscreen = self._browser_fullscreen or self._web_fullscreen_tab is not None or self.isFullScreen()
+        chrome_visible = not in_fullscreen
+        if hasattr(self, "title_bar"):
+            self.title_bar.setVisible(chrome_visible and not self._use_system_title_bar)
+        if hasattr(self, "main_layout"):
+            if in_fullscreen:
+                self.main_layout.setContentsMargins(0, 0, 0, 0)
+                self._main_layout_fullscreen_margins = self._normal_layout_margins()
+            else:
+                self.main_layout.setContentsMargins(*self._normal_layout_margins())
+
+        if was_visible:
+            if state & Qt.WindowState.WindowFullScreen:
+                self.showFullScreen()
+            elif state & Qt.WindowState.WindowMaximized:
+                self.showMaximized()
+            elif state & Qt.WindowState.WindowMinimized:
+                self.showMinimized()
+            else:
+                self.setGeometry(geometry)
+                self.show()
+
+    def refresh_window_icons(self):
+        if hasattr(self, "title_bar"):
+            self.title_bar.refresh_icons()
+        if hasattr(self, "nav_bar") and hasattr(self.nav_bar, "refresh_icons"):
+            self.nav_bar.refresh_icons()
+        if hasattr(self, "tab_manager") and hasattr(self.tab_manager, "refresh_icons"):
+            self.tab_manager.refresh_icons()
 
     def eventFilter(self, obj, event):
         """Intercept key presses at the application level.
@@ -535,7 +620,7 @@ class BrowserWindow(QMainWindow):
             return a
 
         # Open File
-        action("📂  Open File...",   "Ctrl+O", self.open_file)
+        action("Open File...",   "Ctrl+O", self.open_file)
         self.menu.addSeparator()
 
         # Browser actions
@@ -628,7 +713,7 @@ class BrowserWindow(QMainWindow):
         self._sync_fullscreen_button()
 
     def _set_browser_chrome_visible(self, visible):
-        self.title_bar.setVisible(visible)
+        self.title_bar.setVisible(visible and not self._use_system_title_bar)
         self.nav_bar.setVisible(visible)
         self.tab_manager.tabBar().setVisible(visible)
         corner = self.tab_manager.cornerWidget(Qt.Corner.TopRightCorner)
@@ -644,6 +729,8 @@ class BrowserWindow(QMainWindow):
             if self._main_layout_fullscreen_margins is not None:
                 self.main_layout.setContentsMargins(*self._main_layout_fullscreen_margins)
                 self._main_layout_fullscreen_margins = None
+            else:
+                self.main_layout.setContentsMargins(*self._normal_layout_margins())
         else:
             if self._main_layout_fullscreen_margins is None:
                 margins = self.main_layout.contentsMargins()
@@ -661,10 +748,8 @@ class BrowserWindow(QMainWindow):
     def _sync_fullscreen_button(self):
         if hasattr(self, "nav_bar") and hasattr(self.nav_bar, "fullscreen_btn"):
             if self._browser_fullscreen or self.isFullScreen():
-                self.nav_bar.fullscreen_btn.setText("⛶")
                 self.nav_bar.fullscreen_btn.setToolTip("Exit Browser Fullscreen (F11)")
             else:
-                self.nav_bar.fullscreen_btn.setText("⛶")
                 self.nav_bar.fullscreen_btn.setToolTip("Toggle Browser Fullscreen (F11)")
 
     def _is_plain_key_event(self, modifiers):

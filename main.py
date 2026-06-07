@@ -1,5 +1,19 @@
 import sys
 import os
+
+
+def _configure_web_engine_color_scheme(theme_name: str):
+    flags = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+    theme = theme_name.lower() if theme_name else "dark"
+    preferred = "dark" if theme == "dark" else "light"
+    needed_flags = [
+        "--disable-features=WebContentsForceDark,AutoDarkMode",
+        f"--force-prefers-color-scheme={preferred}",
+    ]
+    missing_flags = [flag for flag in needed_flags if flag not in flags]
+    if missing_flags:
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " ".join([flags, *missing_flags]).strip()
+
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from scheme_handler import register_infinity_scheme
@@ -28,6 +42,7 @@ def main():
 
     # Use fixed app themes only (dark default, light optional), independent of OS theme.
     settings = SettingsManager()
+    _configure_web_engine_color_scheme(settings.get("ui_theme", "dark"))
     apply_theme(app, settings.get("ui_theme", "dark"))
 
     window = BrowserWindow()

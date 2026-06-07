@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QFrame, QLineEdit
 )
 from PyQt6.QtCore import Qt, QUrl
+from icon_utils import themed_icon
 from theme_manager import render_template, theme_from_widget
 
 BOOKMARKS_FILE = os.path.join(os.path.dirname(__file__), 'bookmarks.json')
@@ -112,7 +113,7 @@ class BookmarkDialog(QDialog):
         layout.setSpacing(12)
 
         # Header
-        title = QLabel("☆  Bookmarks")
+        title = QLabel("Bookmarks")
         title.setObjectName("Title")
         layout.addWidget(title)
 
@@ -137,8 +138,9 @@ class BookmarkDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        del_btn = QPushButton("🗑  Remove")
+        del_btn = QPushButton("Remove")
         del_btn.setObjectName("DeleteBtn")
+        del_btn.setIcon(themed_icon("trash", theme_from_widget(self), "danger"))
         del_btn.clicked.connect(self._remove)
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)

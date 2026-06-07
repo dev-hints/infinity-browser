@@ -2,8 +2,9 @@ import os
 import sys
 import subprocess
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
-from PyQt6.QtCore import Qt, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QSize
 from PyQt6.QtGui import QFont, QIcon
+from icon_utils import themed_icon
 from theme_manager import render_template, theme_from_widget
 
 class MediaPlayerWidget(QWidget):
@@ -20,8 +21,8 @@ class MediaPlayerWidget(QWidget):
         self.layout.setSpacing(20)
         
         # Icon
-        self.icon_label = QLabel("🎬")
-        self.icon_label.setStyleSheet(render_template("font-size: 72px; color: {{accent}};", self.theme))
+        self.icon_label = QLabel()
+        self.icon_label.setPixmap(themed_icon("video", self.theme, "accent", 72).pixmap(72, 72))
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.icon_label)
         
@@ -43,7 +44,9 @@ class MediaPlayerWidget(QWidget):
         self.layout.addWidget(self.desc_label)
         
         # Button
-        self.play_btn = QPushButton("▶ Open in System Player")
+        self.play_btn = QPushButton("Open in System Player")
+        self.play_btn.setIcon(themed_icon("play", self.theme, "surface"))
+        self.play_btn.setIconSize(QSize(18, 18))
         self.play_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.play_btn.setStyleSheet(render_template("""
             QPushButton {
